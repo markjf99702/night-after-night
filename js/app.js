@@ -665,7 +665,7 @@ function renderNight(date) {
   const others = n.venue ? n.venue.nights.filter(x => x !== n && x.songCount >= 1) : [];
   const row = t => {
     if (!t.songs) {
-      if (/encore/i.test(t.other)) return `<li class="encore"><span></span><span>Encore</span><span></span></li>`;
+      if (/encore/i.test(t.other)) return `<li class="encore"><span>Encore</span></li>`;
       return `<li class="other"><span class="s">${esc(t.other)}</span><span class="len">${t.secs ? clock(t.secs) : ''}</span></li>`;
     }
     return `<li><span class="s">${t.songs.map(songLink).join('<span class="seg">&gt;</span>')}${t.segue ? '<span class="seg">&gt;</span>' : ''}${extras(t) ? `<small>${esc(extras(t))}</small>` : ''}</span>
