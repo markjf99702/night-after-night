@@ -3,14 +3,14 @@ import { build, clock, duration, dateText, story } from './model.js';
 import { buildShow, encode, decode, encoreSize, pool, PICKS, JAMS } from './builder.js';
 import { lifeline, sparkline } from './chart.js';
 import { bandOn } from './lineup.js';
+import { esc, plural, venueLine, songLink, nightLink, songsNav, nightRow, atPlace, placeText } from './ui.js';
+import { renderBefore, renderFlow, renderYear, yearsChart, beforeFact } from './insight-pages.js';
 
 const M = build(DATA);
 const SITE = 'https://junkdrawer.works/night-after-night/';
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
 const sheetBody = document.getElementById('sheet-body');
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const plural = (n, one, many = one + 's') => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
 // localStorage can be missing or refuse (private windows, the Artifact viewer), so every use is wrapped.
 const store = {
@@ -30,9 +30,6 @@ document.getElementById('count').textContent =
 // ---------------------------------------------------------------------------------------------------------------
 // Little pieces used on every page
 
-const venueLine = n => [n.place, n.town].filter(Boolean).join(', ') || 'Venue not listed';
-const songLink = s => `<a href="#/song/${s.slug}">${esc(s.name)}</a>`;
-const nightLink = (n, text) => `<a href="#/night/${n.date}">${esc(text || dateText(n.date))}</a>`;
 const trackTitle = t => t.songs.map(s => esc(s.name)).join('<span class="arrow"> &gt; </span>');
 
 function where(t) {
@@ -392,6 +389,7 @@ let songState = { q: '', sort: 'versions', album: 'all' };
 function renderSongs() {
   const albums = M.albums.map(a => `<option value="${a.id}">${esc(a.name)} (${a.year})</option>`).join('');
   view.innerHTML = `<section class="songs">
+    ${songsNav('songs')}
     <div class="list-tools">
       <input type="search" id="q" placeholder="Find a song" aria-label="Find a song" autocomplete="off">
       <select id="sort" aria-label="Order">${Object.entries(SORTS).map(([k, [t]]) => `<option value="${k}">${t}</option>`).join('')}</select>
@@ -520,12 +518,14 @@ function facts(s) {
     out.push(`<li>Played on ${plural(whole, 'whole night')} released in full${bits.length ? `, and ${bits.join(' and ')}` : ''}.</li>`);
   }
   if (s.nexts.length) out.push(`<li>Most often followed by ${s.nexts.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.</li>`);
-  if (s.prevs.length) out.push(`<li>Most often after ${s.prevs.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.</li>`);
+  if (s.prevs.length) out.push(`<li>Most often after ${s.prevs.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}. <a href="#/flow/${s.slug}">What leads where</a>.</li>`);
+  const before = beforeFact(M, s);
+  if (before) out.push(`<li>${before}</li>`);
   if (s.longest && s.shortest && s.longest !== s.shortest) {
-    out.push(`<li>Longest: ${clock(s.longest.secs)}, ${nightLink(s.longest.night)} at ${esc(s.longest.night.place)}. Shortest: ${clock(s.shortest.secs)}, ${nightLink(s.shortest.night)}.</li>`);
+    out.push(`<li>Longest: ${clock(s.longest.secs)}, ${nightLink(s.longest.night)} ${esc(atPlace(s.longest.night))}. Shortest: ${clock(s.shortest.secs)}, ${nightLink(s.shortest.night)}.</li>`);
   }
   if (s.bits.length) out.push(`<li>Bits of other songs heard inside it: ${s.bits.slice(0, 6).map(([b, n]) => `${esc(b)}${n > 1 ? ` (${n})` : ''}`).join(', ')}.</li>`);
-  out.push(`<li>First released from ${nightLink(s.first.night)}, ${esc(venueLine(s.first.night))}; the latest from ${nightLink(s.last.night)}.</li>`);
+  out.push(`<li>First released from ${nightLink(s.first.night)}, ${esc(s.first.night.noVenue ? placeText(s.first.night) : venueLine(s.first.night))}; the latest from ${nightLink(s.last.night)}.</li>`);
   return out.join('');
 }
 
@@ -607,7 +607,7 @@ function pick(v, scroll, hover) {
 let resizeTimer;
 addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (document.getElementById('chart-box')) drawChart(); }, 120);
+  resizeTimer = setTimeout(() => { if (document.getElementById('chart-box')) drawChart(); drawYears(); }, 120);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -619,6 +619,10 @@ function renderNights() {
   const years = [...M.years];
   if (newestFirst) years.reverse();
   view.innerHTML = `<section class="nights-page">
+    <figure class="years-chart">
+      <figcaption><h2 class="section-title">The years</h2><p class="muted small">How many nights were released from each year (the pale part is nights with only a song or two out), and how long a whole night ran. Tap a year for its page.</p></figcaption>
+      <div id="years-box"></div>
+    </figure>
     <div class="list-tools">
       <input type="search" id="nq" placeholder="Find a venue or town" aria-label="Find a venue or town" autocomplete="off">
       <button type="button" class="chip" id="order-btn" aria-pressed="false">${newestFirst ? 'Newest first' : 'Oldest first'}</button>
@@ -635,15 +639,13 @@ function renderNights() {
       if (newestFirst) nights.reverse();
       const full = nights.filter(n => n.songCount >= 5), small = nights.filter(n => n.songCount < 5);
       if (!nights.length) return '';
-      return `<section class="year" id="y${y}"><h3>${y} <small>${plural(full.length, 'night')}${small.length ? `, plus ${plural(small.length, 'night')} with a song or two` : ''}</small></h3>
-        <ul class="night-list">${full.map(n => `<li><a href="#/night/${n.date}">
-          <span class="dd">${dateText(n.date, 'year')}</span>
-          <span class="v">${esc(n.place)}<small>${esc(n.town || '')}${n.town ? ' · ' : ''}${esc(n.release.label)}</small></span>
-          <span class="n">${plural(n.songCount, 'song')}</span></a></li>`).join('')}</ul>
+      return `<section class="year" id="y${y}"><h3><a href="#/year/${y}">${y}</a> <small>${plural(full.length, 'night')}${small.length ? `, plus ${plural(small.length, 'night')} with a song or two` : ''}</small><a class="year-more" href="#/year/${y}">The year →</a></h3>
+        <ul class="night-list">${full.map(nightRow).join('')}</ul>
         ${small.length ? `<p class="bits">Also: ${small.map(n => `${nightLink(n, dateText(n.date, 'year'))} (${n.tracks.filter(t => t.songs).flatMap(t => t.songs).map(s => esc(s.name)).join(', ')})`).join('; ')}.</p>` : ''}
       </section>`;
     }).join('') || '<p class="empty-note">No nights match.</p>';
   };
+  drawYears();
   nq.addEventListener('input', draw);
   document.getElementById('order-btn').addEventListener('click', () => { newestFirst = !newestFirst; store.set('newest', newestFirst); renderNights(); });
   view.querySelector('.year-jump').addEventListener('click', e => {
@@ -653,6 +655,11 @@ function renderNights() {
     document.getElementById('y' + a.dataset.year)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   draw();
+}
+
+function drawYears() {
+  const box = document.getElementById('years-box');
+  if (box) box.innerHTML = yearsChart(M, box.clientWidth);
 }
 
 function renderNight(date) {
@@ -675,7 +682,7 @@ function renderNight(date) {
   view.innerHTML = `<article class="night">
     <a class="back" href="#/nights">← Nights</a>
     <header class="night-head">
-      <p class="kicker">${esc(dateText(date, 'long'))}</p>
+      <p class="kicker">${esc(dateText(date, 'long').replace(/\d{4}$/, ''))}<a href="#/year/${n.year}">${n.year}</a></p>
       <h2>${esc(n.place)}</h2>
       <p class="where">${esc(n.town || 'Venue not listed')} · ${esc(n.release.label)} · ${plural(n.songCount, 'song')}${n.total ? ` · ${clock(n.total)}` : ''}</p>
       <p class="band">On stage: ${esc(band.slice(0, -1).join(', '))} and ${esc(band.at(-1))}.</p>
@@ -704,7 +711,7 @@ function renderNight(date) {
 
 function route() {
   const [page, a, b] = location.hash.replace(/^#\/?/, '').split('/');
-  const tab = page === 'song' || page === 'songs' ? 'songs' : page === 'night' || page === 'nights' ? 'nights' : 'build';
+  const tab = ['song', 'songs', 'before', 'flow'].includes(page) ? 'songs' : ['night', 'nights', 'year'].includes(page) ? 'nights' : 'build';
   document.querySelectorAll('.tabs a').forEach(t => {
     if (t.dataset.tab === tab) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
   });
@@ -720,16 +727,26 @@ function route() {
   else if (page === 'song') renderSong(a, b);
   else if (page === 'nights') renderNights();
   else if (page === 'night') renderNight(a);
+  else if (page === 'before') renderBefore(view, M);
+  else if (page === 'flow') renderFlow(view, M, a);
+  else if (page === 'year') renderYear(view, M, a);
   else renderBuilder();
-  document.title = page === 'song' && M.bySlug.get(a) ? `${M.bySlug.get(a).name} · Night After Night`
-    : page === 'night' && M.byDate.get(a) ? `${dateText(a)} · Night After Night` : 'Night After Night';
+  const titles = {
+    song: M.bySlug.get(a)?.name, night: M.byDate.get(a) && dateText(a), year: M.years.includes(+a) && a,
+    before: 'Before the album', flow: 'What leads where',
+  };
+  document.title = titles[page] ? `${titles[page]} · Night After Night` : 'Night After Night';
 }
 
 let lastPage = null;
 addEventListener('hashchange', () => {
   const page = location.hash.replace(/^#\/?/, '').split('/').slice(0, 2).join('/');
+  const was = lastPage;
   route();
-  if (page !== lastPage) scrollTo({ top: 0 });
+  // Following a song around the map keeps the map in view; anything else starts at the top.
+  const map = /^flow\b/.test(page) && /^flow\b/.test(was || '') && document.querySelector('.flow-pick');
+  if (map && map.getBoundingClientRect().top < 60) map.scrollIntoView({ block: 'start' });
+  else if (!map && page !== was) scrollTo({ top: 0 });
   lastPage = page;
 });
 lastPage = location.hash.replace(/^#\/?/, '').split('/').slice(0, 2).join('/');

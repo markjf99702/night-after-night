@@ -71,6 +71,33 @@ async function save(page, path, clip) {
   await save(page, 'docs/phone-night.png');
   await page.context().close();
 }
+{
+  const page = await open({ width: 390, height: 844 }, 2, '#/before');
+  const top = await page.$$eval('.album-run h3', hs => {
+    const h = hs.find(h => /Busted Stuff/.test(h.textContent));
+    return h.getBoundingClientRect().top + scrollY - 100;
+  });
+  await page.evaluate(y => scrollTo(0, y), top);
+  await page.waitForTimeout(200);
+  await save(page, 'docs/phone-before.png');
+  await page.context().close();
+}
+{
+  const page = await open({ width: 390, height: 844 }, 2, '#/flow/ants-marching');
+  const top = await page.$eval('#flow', el => el.getBoundingClientRect().top + scrollY - 70);
+  await page.evaluate(y => scrollTo(0, y), top);
+  await page.waitForTimeout(200);
+  await save(page, 'docs/phone-flow.png');
+  await page.context().close();
+}
+{
+  const page = await open({ width: 390, height: 844 }, 2, '#/year/2008');
+  const top = await page.$eval('.year-page', el => el.getBoundingClientRect().top + scrollY - 70);
+  await page.evaluate(y => scrollTo(0, y), top);
+  await page.waitForTimeout(200);
+  await save(page, 'docs/phone-year.png');
+  await page.context().close();
+}
 
 // Link preview, 1200 x 630: the name and one line on the left, a setlist the app wrote on the right.
 {

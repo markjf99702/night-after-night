@@ -114,6 +114,52 @@ assert.match(await page.textContent('.night-head h2'), /Worcester Centrum Centre
 assert.match(await page.textContent('.setlist'), /Seek Up/);
 assert.equal(await sideways(), false, 'the night page scrolls sideways on a phone');
 
+// Before the album: the songs that were on stage first, each one a way into its song.
+await page.tap('.tabs [data-tab="songs"]');
+await page.tap('.subnav a[href="#/before"]');
+await page.waitForSelector('.album-run .waits a');
+assert.match(await page.textContent('.before-page .headline'), /were on stage first/);
+assert.equal(await sideways(), false, 'Before the album scrolls sideways on a phone');
+await page.tap('.album-run .waits a >> text=Grey Street');
+await page.waitForSelector('.song-head h2');
+assert.match(await page.textContent('.song-head h2'), /Grey Street/);
+assert.match(await page.textContent('.facts'), /before Busted Stuff came out/);
+
+// What leads where: it starts with the openers; tap one to follow it.
+await page.tap('.facts a[href^="#/flow/"]');
+await page.waitForSelector('.flow-center');
+assert.match(await page.textContent('.flow-center strong'), /Grey Street/);
+await page.tap('.subnav a[href="#/flow"]');
+await page.waitForFunction(() => /Openers/.test(document.querySelector('.flow-center')?.textContent));
+const opener = (await page.textContent('.flow-list a.f-name >> nth=0')).trim();
+await page.tap('.flow-list a.f-name >> nth=0');
+await page.waitForFunction(name => document.querySelector('.flow-center strong')?.textContent.trim() === name, opener);
+assert.equal(await page.inputValue('#flow-song'), await page.evaluate(() => location.hash.split('/')[2]), 'the picker follows along');
+assert.equal(await sideways(), false, 'What leads where scrolls sideways on a phone');
+// Pick a song from the list: Pantala Naga Pampa mostly goes into Rapunzel.
+await page.selectOption('#flow-song', 'pantala-naga-pampa');
+await page.waitForFunction(() => /Pantala/.test(document.querySelector('.flow-center strong')?.textContent));
+const firsts = await page.$$eval('.flow-list', ls => ls.map(l => l.querySelector('.f-name')?.textContent.trim()));
+assert.equal(firsts.at(-1), 'Rapunzel', 'Pantala Naga Pampa leads into Rapunzel');
+// On a wide screen it's drawn as a map.
+await page.setViewportSize({ width: 1100, height: 900 });
+await page.waitForSelector('#flow svg.sankey');
+assert.ok(await page.$$eval('#flow .s-node', n => n.length) >= 2, 'the map has songs either side');
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForSelector('#flow .flow-list');
+
+// Each year has a page, from the chart on the Nights page; step to the year before.
+await page.tap('.tabs [data-tab="nights"]');
+await page.waitForSelector('#years-box svg');
+await page.tap('#years-box a[href="#/year/2008"]');
+await page.waitForSelector('.year-head h2');
+assert.equal((await page.textContent('.year-head h2')).trim(), '2008');
+assert.match(await page.textContent('.changes'), /LeRoi Moore/);
+assert.ok((await page.$$('.year-nights .night-list li')).length > 3, 'the year lists its nights');
+assert.equal(await sideways(), false, 'a year page scrolls sideways on a phone');
+await page.tap('.year-nav a >> text=2007');
+await page.waitForFunction(() => document.querySelector('.year-head h2')?.textContent.trim() === '2007');
+
 // Works offline once it has been opened.
 await page.goto(base);
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 }).catch(() => {});

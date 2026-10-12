@@ -96,7 +96,7 @@ export const median = xs => {
 };
 
 export function build(data) {
-  const albums = data.albums.map((a, i) => ({ id: i, name: a.n, year: a.y, by: a.by || null }));
+  const albums = data.albums.map((a, i) => ({ id: i, name: a.n, year: a.y, date: a.d || `${a.y}-07-01`, songCount: a.t || 0, by: a.by || null }));
   const releases = data.releases.map((r, i) => ({ id: i, title: r.t, year: r.y, mb: r.mb, ...releaseLabel(r.t, r.y) }));
   const venues = data.venues.map((v, i) => ({ id: i, name: v.n, town: v.t, now: v.now || null, nights: [], names: new Set([v.n]) }));
   const taken = new Set();
@@ -106,14 +106,14 @@ export function build(data) {
     taken.add(slug);
     return {
       id: i, name: s.n, slug, cover: s.c || null, versions: [],
-      albums: (s.a || []).map(([a, length]) => ({ album: albums[a], length })).sort((x, y) => x.album.year - y.album.year),
+      albums: (s.a || []).map(([a, length]) => ({ album: albums[a], length })).sort((x, y) => x.album.date.localeCompare(y.album.date)),
     };
   });
 
   const nights = data.nights.map((n, i) => {
     const venue = venues[n.v] || null;
     const night = {
-      id: i, date: n.d, year: +n.d.slice(0, 4), venue, place: n.n || venue?.name || 'Unknown venue',
+      id: i, date: n.d, year: +n.d.slice(0, 4), venue, place: n.n || venue?.name || 'Unknown venue', noVenue: !n.n && !venue,
       town: venue?.town || '', release: releases[n.r], whole: !!n.w, tracks: [],
     };
     if (venue) { venue.nights.push(night); venue.names.add(night.place); }
@@ -127,6 +127,7 @@ export function build(data) {
     }
     const main = night.tracks.filter(t => t.songs && !t.extra);
     night.total = night.tracks.filter(t => !t.extra).reduce((sum, t) => sum + t.secs, 0);
+    night.timed = night.tracks.filter(t => !t.extra).every(t => t.secs > 0); // some downloads list no lengths
     night.songCount = main.reduce((n, t) => n + t.songs.length, 0);
     main.forEach((t, k) => {
       t.index = k;

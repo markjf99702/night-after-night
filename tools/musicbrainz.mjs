@@ -60,10 +60,9 @@ async function browse(entity, query, limit) {
 
 const releases = await browse('release', `artist=${BAND}&status=official&inc=recordings+release-groups+media+artist-credits`, 25);
 const recordings = await browse('recording', `artist=${BAND}&inc=place-rels+work-rels+area-rels`, 100);
-// Dave's one solo studio album: the earliest release of Some Devil.
+// Dave's one solo studio album, Some Devil.
 const daveAlbums = (await browse('release', `artist=${DAVE}&status=official&type=album&inc=release-groups+media`, 25))
-  .filter(r => r['release-group'].title === 'Some Devil' && !(r['release-group']['secondary-types'] || []).length && r.date)
-  .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 1);
+  .filter(r => r['release-group'].title === 'Some Devil' && !(r['release-group']['secondary-types'] || []).length);
 const bandRels = await get(`artist/${BAND}?inc=artist-rels&fmt=json`);
 const members = new Set([BAND, DAVE, ...(bandRels.relations || []).filter(r => /member|supporting/.test(r.type)).map(r => r.artist.id)]);
 
@@ -151,6 +150,7 @@ function songsOf(rec, trackTitle) {
   return { named, bits: others.filter(x => x.partial).map(x => x.title), withs: others.filter(x => !x.partial).map(x => x.title) };
 }
 
+
 // ---------------------------------------------------------------------------------------------------------------
 // Studio albums: DMB's eleven, plus Dave's Some Devil for the songs the band took from it.
 
@@ -161,28 +161,52 @@ for (const r of releases) {
   if (!studio.has(rg.id)) studio.set(rg.id, []);
   studio.get(rg.id).push(r);
 }
-const trackCount = r => audioMedia(r).reduce((n, m) => n + (m.tracks?.length || 0), 0);
+// How the albums spell each song, counted over every edition, so one edition's "Idea Of You" doesn't win.
+const spellings = new Map();
+for (const [, rs] of studio) for (const r of rs) for (const m of audioMedia(r)) for (const t of m.tracks || []) {
+  const clean = t.title.replace(/\s*\((?:[^)]*\b(?:version|edit|remaster|live|acoustic)\b[^)]*)\)\s*/i, '').trim();
+  const k = songKey(clean);
+  if (!spellings.has(k)) spellings.set(k, new Map());
+  spellings.get(k).set(clean, (spellings.get(k).get(clean) || 0) + 1);
+}
+function albumSpelling(title) {
+  const clean = title.replace(/\s*\((?:[^)]*\b(?:version|edit|remaster|live|acoustic)\b[^)]*)\)\s*/i, '').trim();
+  const options = spellings.get(songKey(clean));
+  return options ? [...options].sort((a, b) => b[1] - a[1])[0][0] : clean;
+}
+
+const trackCount = r => audioMedia(r).reduce((n, m) => n + (m.tracks?.length ?? m['track-count'] ?? 0), 0);
+// The edition everyone has: the most common track count across an album's releases (deluxe and import editions
+// add bonus tracks), the earliest of those with a full date.
+function standard(rs) {
+  const counts = new Map();
+  for (const r of rs) { const n = trackCount(r); if (n) counts.set(n, (counts.get(n) || 0) + 1); }
+  const usual = [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0];
+  return rs.filter(r => trackCount(r) === usual)
+    .sort((a, b) => (a.date?.length === 10 ? a.date : '9999').localeCompare(b.date?.length === 10 ? b.date : '9999'))[0] || rs[0];
+}
 const albums = [];
 for (const [id, rs] of studio) {
   const rg = rgOf(rs[0]);
-  const pick = rs.filter(r => r.date).sort((a, b) => a.date.localeCompare(b.date) || trackCount(a) - trackCount(b))[0] || rs[0];
-  albums.push({ id, name: rg.title, year: +(rg['first-release-date'] || '').slice(0, 4), release: pick });
+  albums.push({ id, name: rg.title, date: rg['first-release-date'], year: +(rg['first-release-date'] || '').slice(0, 4), release: standard(rs) });
 }
-for (const r of daveAlbums) {
+if (daveAlbums.length) {
+  const r = standard(daveAlbums);
   const rg = rgOf(r);
-  if (albums.some(a => a.id === rg.id)) continue;
   const full = await get(`release/${r.id}?inc=recordings+recording-level-rels+work-rels&fmt=json`);
   for (const m of full.media || []) for (const t of m.tracks || []) if (!recById.has(t.recording.id)) recById.set(t.recording.id, t.recording);
-  albums.push({ id: rg.id, name: rg.title, year: +(rg['first-release-date'] || '').slice(0, 4), by: 'Dave Matthews', release: full });
+  albums.push({ id: rg.id, name: rg.title, date: rg['first-release-date'], year: +(rg['first-release-date'] || '').slice(0, 4), by: 'Dave Matthews', release: full });
 }
-albums.sort((a, b) => a.year - b.year);
+albums.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 for (const album of albums) {
+  album.songs = 0;
   for (const m of audioMedia(album.release)) {
     for (const t of m.tracks || []) {
       const { named } = songsOf(recById.get(t.recording.id) || t.recording, t.title);
       if (named.length !== 1) continue;
+      album.songs++;
       const s = song(named[0].title);
-      s.names.set(t.title.replace(/\s*\((?:[^)]*\b(?:version|edit|remaster)\b[^)]*)\)\s*/i, '').trim(), 1000); // the album's spelling wins
+      s.names.set(albumSpelling(t.title), 1000); // the album's spelling wins
       if (!s.albums.some(a => a.album === album)) s.albums.push({ album, length: trackSeconds(t) });
     }
   }
@@ -358,9 +382,24 @@ for (const [date, rows] of [...nightRows].sort(([a], [b]) => a.localeCompare(b))
   const main = editions[0].sort((a, b) => a.disc - b.disc || a.track - b.track);
   const withPlace = main.find(x => x.info.place) || rows.find(x => x.info.place);
   const at = venueFrom((withPlace || main[0]).info, (withPlace || main[0]).release);
+  // A one-night release dated only by its title sometimes carries another night's songs on its last disc,
+  // with nothing to say which night. A show doesn't run past three hours and twenty minutes, so trailing
+  // discs that would take it past that are left out rather than guessed at.
+  const discs = [...new Set(main.map(x => x.disc))];
+  let mainRows = main;
+  while (discs.length > 1) {
+    const total = mainRows.reduce((a, x) => a + trackSeconds(x.t), 0);
+    const lastDisc = mainRows.filter(x => x.disc === discs.at(-1));
+    if (total <= 12000 || !lastDisc.every(x => x.info.fromTitle)) break;
+    mainRows = mainRows.filter(x => x.disc !== discs.at(-1));
+    discs.pop();
+  }
   const tracks = [];
   const have = new Set();
+  const recordings = new Set();
   const add = (row, extra) => {
+    if (recordings.has(row.t.recording.id)) return; // listed twice on the same release
+    recordings.add(row.t.recording.id);
     const rec = recById.get(row.t.recording.id) || row.t.recording;
     const title = row.t.title.trim();
     const { named, bits, withs } = songsOf(rec, title);
@@ -379,14 +418,18 @@ for (const [date, rows] of [...nightRows].sort(([a], [b]) => a.localeCompare(b))
       release: releaseRef(row.release), disc: row.disc, track: row.track, segue: /(?:>>|>|»|->|→)\s*$/.test(title),
     });
   };
-  for (const row of main) add(row, false);
-  for (const ed of editions.slice(1)) for (const row of ed) add(row, true);
+  for (const row of mainRows) add(row, false);
+  for (const ed of editions.slice(1)) for (const row of ed) if (!main.includes(row)) add(row, true);
   if (!tracks.some(t => t.songs)) continue;
   const rg = rgOf(main[0].release);
-  // A whole night: from a one-night release (or one night's discs of a box), with enough songs to be a show.
+  // A whole night: from a one-night release (or one night's discs of a box), with enough songs to be a show,
+  // and not so long, or so full of repeats, that it's really several nights filed under one date.
   const oneNight = !isCompilation(rg) && (dateIn(rg.title)?.date === date || main.every(x => !x.info.fromTitle));
-  const count = tracks.filter(t => t.songs && !t.extra).length;
-  nights.push({ date, venue: at?.venue, venueName: at?.name, tracks, release: releaseRef(main[0].release), whole: oneNight && count >= 10 });
+  const mainTracks = tracks.filter(t => t.songs && !t.extra);
+  const total = tracks.filter(t => !t.extra).reduce((a, t) => a + t.secs, 0);
+  const sung = mainTracks.flatMap(t => t.songs);
+  const repeats = sung.length - new Set(sung).size;
+  nights.push({ date, venue: at?.venue, venueName: at?.name, tracks, release: releaseRef(main[0].release), whole: oneNight && mainTracks.length >= 10 && total <= 12600 && repeats < 2 });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -426,7 +469,7 @@ const venueOut = venueList.map(v => {
 
 const out = {
   built: new Date().toISOString().slice(0, 10),
-  albums: albums.map(a => ({ n: a.name, y: a.year, ...(a.by ? { by: a.by } : {}) })),
+  albums: albums.map(a => ({ n: a.name, y: a.year, d: a.date, t: a.songs, ...(a.by ? { by: a.by } : {}) })),
   songs: songList.map(s => {
     const o = { n: s.name };
     if (s.albums.length) o.a = s.albums.map(a => [albumIndex.get(a.album), a.length]);
