@@ -44,8 +44,14 @@ const fragment = html
   .replace(/<meta charset[^>]*>\s*/i, '')
   .replace(/<meta name="viewport"[^>]*>\s*/i, '');
 
-// That host pads the page clear of a phone's notch itself, so the header doesn't add its own.
-const embedded = fragment.replace('padding: calc(22px + env(safe-area-inset-top)) 0 10px;', 'padding: 22px 0 10px;');
+// That host pads the page clear of a phone's notch itself, so the header doesn't add its own,
+// and the sticky tabs sit below that padding.
+const embedded = fragment
+  .replace('padding: calc(22px + env(safe-area-inset-top)) 0 10px;', 'padding: 22px 0 10px;')
+  .replace('position: sticky; top: 0; z-index: 20;', 'position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;');
+for (const piece of ['padding: 22px 0 10px;', 'top: env(safe-area-inset-top, 0px); z-index: 20;']) {
+  if (!embedded.includes(piece)) throw new Error(`build: couldn't adjust "${piece}" for the embedded copy`);
+}
 
 await mkdir(new URL('dist/', root), { recursive: true });
 await writeFile(new URL('dist/night-after-night.html', root), html);
