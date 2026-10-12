@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Night After Night</title>
+  <meta name="description" content="Every song Dave Matthews Band has put out from the stage: every official live version of each one, from 1992 to now, and how it changed. Build a show from them to fit your drive, with real versions from real nights.">
+  <meta property="og:title" content="Night After Night">
+  <meta property="og:description" content="Every official DMB live version, and a show built from them to fit your drive.">
+  <meta property="og:image" content="https://junkdrawer.works/night-after-night/og.png">
+  <meta property="og:url" content="https://junkdrawer.works/night-after-night/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0d0b" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/permanent-marker.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <noscript><p class="noscript">Night After Night needs JavaScript to read the setlists.</p></noscript>
+
+  <header class="top">
+    <a class="mark" href="#/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="4" width="18" height="25" rx="1.5" class="mark-paper" transform="rotate(-4 16 16)"/><rect x="10" y="2.5" width="12" height="4.5" rx="1" class="mark-tape" transform="rotate(-4 16 16)"/><path class="mark-ink" d="M10.5 12.5h10M11 17h8.5M11.5 21.5h9.5" transform="rotate(-4 16 16)"/></svg>
+      <span>Night After Night</span>
+    </a>
+    <p class="lede">Every song Dave Matthews Band has released from the stage, <span id="span-years">1992 to now</span>, and how each one changed over the years. Or let it write you a show from those recordings to fit the time you’ve got.</p>
+    <p class="count" id="count"></p>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <a href="#/" data-tab="build">Build a show</a>
+    <a href="#/songs" data-tab="songs">Songs</a>
+    <a href="#/nights" data-tab="nights">Nights</a>
+  </nav>
+
+  <main id="view" tabindex="-1"></main>
+
+  <dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-body" id="sheet-body"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <footer class="jd-foot">
+    <a href="https://junkdrawer.works/">Part of junkdrawer.works</a>
+    <span aria-hidden="true">·</span>
+    <a href="https://junkdrawer.works/privacy.html">Privacy</a>
+    <span aria-hidden="true">·</span>
+    <a href="https://musicbrainz.org/artist/07e748f1-075e-428d-85dc-ce3be434e906">Data: MusicBrainz</a>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
