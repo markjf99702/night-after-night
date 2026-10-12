@@ -104,7 +104,7 @@ async function save(page, path, clip) {
   const app = await open({ width: 1100, height: 1400 }, 2, '#/', 'light');
   await app.evaluate(() => {
     const { opts, writeShow } = window.nightAfterNight;
-    Object.assign(opts, { minutes: 60, picks: 'hits', when: 'any', venue: '', jams: 'any', covers: true });
+    Object.assign(opts, { minutes: 60, picks: 'hits', when: ['any'], venues: [], jams: 'any', covers: true });
     writeShow(false);
   });
   await app.waitForTimeout(300);

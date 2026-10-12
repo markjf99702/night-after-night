@@ -113,22 +113,51 @@ const WHEN = {
   leroi: ['With LeRoi', '0000', '2008-06-28'],
   pick: ['Pick years', null, null],
 };
-const DEFAULTS = { minutes: 90, when: 'any', from: +first, to: +last, venue: '', picks: 'mix', jams: 'any', covers: true };
-let opts = { ...DEFAULTS, ...store.get('options', {}) };
+const venueChoices = M.venues.filter(v => v.nights.filter(n => n.songCount >= 5).length >= 2)
+  .sort((a, b) => b.nights.length - a.nights.length || a.name.localeCompare(b.name));
+// Venues are kept by name and town, which stay put when the data is rebuilt; their place in the list may not.
+const venueKey = v => `${v.name}|${v.town}`;
+const venueByKey = new Map(M.venues.map(v => [venueKey(v), v]));
+
+// "From when?" and "Where?" take any number of choices: a night in any of them counts.
+const DEFAULTS = { minutes: 90, when: ['any'], from: +first, to: +last, venues: [], picks: 'mix', jams: 'any', covers: true };
+let opts = readOptions();
 let show = null;
 let showMinutes = opts.minutes;
 
-function range() {
-  if (opts.when === 'pick') return { from: `${Math.min(opts.from, opts.to)}-01-01`, to: `${Math.max(opts.from, opts.to)}-12-31` };
-  const w = WHEN[opts.when] || WHEN.any;
-  return { from: w[1], to: w[2] };
-}
-function builderOptions() {
-  return { minutes: opts.minutes, ...range(), venue: opts.venue === '' ? null : +opts.venue, picks: opts.picks, jams: opts.jams, covers: opts.covers };
+// The saved choices, including ones saved when each of those took a single choice.
+function readOptions() {
+  const o = { ...DEFAULTS, ...store.get('options', {}) };
+  o.when = [].concat(o.when).filter(k => k !== 'any' && WHEN[k]);
+  if (!o.when.length) o.when = ['any'];
+  if ('venue' in o) {
+    const v = o.venue === '' ? null : M.venues[+o.venue];
+    o.venues = v ? [venueKey(v)] : [];
+    delete o.venue;
+  }
+  o.venues = [].concat(o.venues).filter(k => venueByKey.has(k));
+  return o;
 }
 
-const venueChoices = M.venues.filter(v => v.nights.filter(n => n.songCount >= 5).length >= 2)
-  .sort((a, b) => b.nights.length - a.nights.length || a.name.localeCompare(b.name));
+// Tapping a choice turns it on or off. The "any" choice clears the rest, and comes back when nothing else is on.
+function toggle(list, v, any) {
+  if (v === any) return [any];
+  const on = list.filter(x => x !== any);
+  const next = on.includes(v) ? on.filter(x => x !== v) : [...on, v];
+  return next.length ? next : [any];
+}
+
+function ranges() {
+  return opts.when.filter(k => k !== 'any').map(k => (k === 'pick'
+    ? [`${Math.min(opts.from, opts.to)}-01-01`, `${Math.max(opts.from, opts.to)}-12-31`]
+    : WHEN[k].slice(1)));
+}
+function builderOptions() {
+  return {
+    minutes: opts.minutes, ranges: ranges(), venues: opts.venues.map(k => venueByKey.get(k).id),
+    picks: opts.picks, jams: opts.jams, covers: opts.covers,
+  };
+}
 
 function writeShow(animate = true) {
   showMinutes = opts.minutes;
@@ -152,16 +181,17 @@ function renderBuilder(shared) {
           </div>
         </fieldset>
         <h3 class="section-title f-more more-title">Change what it picks from</h3>
-        <fieldset class="field f-more"><legend>From when?</legend>
+        <fieldset class="field f-more"><legend>From when? <span class="also">As many as you like.</span></legend>
           <div class="chips" data-opt="when">${Object.entries(WHEN).map(([k, [t]]) => `<button type="button" class="chip" data-v="${k}">${t}</button>`).join('')}</div>
           <div class="years" id="years" hidden>
             <select id="from" aria-label="From">${yearsOpts}</select><span class="muted">to</span><select id="to" aria-label="To">${yearsOpts}</select>
           </div>
         </fieldset>
-        <fieldset class="field f-more"><legend>Where?</legend>
-          <select id="venue" aria-label="Venue" style="width:100%">
-            <option value="">Anywhere</option>
-            ${venueChoices.map(v => `<option value="${v.id}">${esc(v.name)}${v.town ? `, ${esc(v.town)}` : ''} (${v.nights.length})</option>`).join('')}
+        <fieldset class="field f-more"><legend>Where? <span class="also">As many as you like.</span></legend>
+          <div class="chips" data-opt="venues" id="where"></div>
+          <select id="venue" aria-label="Add a venue" style="width:100%;margin-top:8px">
+            <option value="">Add a venue</option>
+            ${venueChoices.map(v => `<option value="${esc(venueKey(v))}">${esc(v.name)}${v.town ? `, ${esc(v.town)}` : ''} (${v.nights.length})</option>`).join('')}
           </select>
         </fieldset>
         <fieldset class="field f-more"><legend>Which songs?</legend>
@@ -189,8 +219,10 @@ function renderBuilder(shared) {
   form.addEventListener('click', e => {
     const chip = e.target.closest('.chip');
     if (chip) {
-      const key = chip.parentElement.dataset.opt;
-      opts[key] = key === 'minutes' ? +chip.dataset.v : chip.dataset.v;
+      const key = chip.parentElement.dataset.opt, v = chip.dataset.v;
+      if (key === 'when') opts.when = toggle(opts.when, v, 'any');
+      else if (key === 'venues') opts.venues = v ? opts.venues.filter(k => k !== v) : []; // a venue's chip takes it off
+      else opts[key] = key === 'minutes' ? +v : v;
       changed();
       return;
     }
@@ -202,7 +234,10 @@ function renderBuilder(shared) {
   });
   document.getElementById('from').addEventListener('change', e => { opts.from = +e.target.value; changed(); });
   document.getElementById('to').addEventListener('change', e => { opts.to = +e.target.value; changed(); });
-  document.getElementById('venue').addEventListener('change', e => { opts.venue = e.target.value; changed(); });
+  document.getElementById('venue').addEventListener('change', e => {
+    if (e.target.value && !opts.venues.includes(e.target.value)) opts.venues = [...opts.venues, e.target.value];
+    changed();
+  });
   document.getElementById('covers').addEventListener('change', e => { opts.covers = e.target.checked; changed(); });
   document.getElementById('again').addEventListener('click', () => writeShow());
   document.getElementById('again2').addEventListener('click', () => writeShow());
@@ -233,15 +268,23 @@ function changed() {
 }
 
 function reflectOptions() {
+  // The chosen venues are chips of their own, after "Anywhere"; tapping one takes it off.
+  document.getElementById('where').innerHTML = `<button type="button" class="chip" data-v="">Anywhere</button>${opts.venues.map(k => {
+    const v = venueByKey.get(k);
+    return `<button type="button" class="chip" data-v="${esc(k)}" aria-label="${esc(`${v.name}: take it off`)}">${esc(v.name)}<span class="x" aria-hidden="true">×</span></button>`;
+  }).join('')}`;
   for (const group of document.querySelectorAll('#order .chips')) {
-    const key = group.dataset.opt;
-    for (const chip of group.children) chip.setAttribute('aria-pressed', String(String(opts[key]) === chip.dataset.v));
+    const on = group.dataset.opt === 'venues' ? (opts.venues.length ? opts.venues : ['']) : [].concat(opts[group.dataset.opt]).map(String);
+    for (const chip of group.children) chip.setAttribute('aria-pressed', String(on.includes(chip.dataset.v)));
   }
   document.getElementById('mins').textContent = clock(opts.minutes * 60).replace(/:00$/, '') + (opts.minutes < 60 ? ' min' : '');
-  document.getElementById('years').hidden = opts.when !== 'pick';
+  document.getElementById('years').hidden = !opts.when.includes('pick');
   document.getElementById('from').value = opts.from;
   document.getElementById('to').value = opts.to;
-  document.getElementById('venue').value = opts.venue;
+  const add = document.getElementById('venue');
+  add.value = '';
+  add.options[0].textContent = opts.venues.length ? 'Add another venue' : 'Add a venue';
+  for (const o of add.options) if (o.value) o.disabled = opts.venues.includes(o.value);
   document.getElementById('covers').checked = opts.covers;
 }
 
@@ -698,8 +741,8 @@ function renderNight(date) {
     ${others.length ? `<section style="margin-top:28px"><h3 class="section-title">Other nights here</h3><p>${others.map(x => nightLink(x, dateText(x.date))).join(' · ')}</p></section>` : ''}
   </article>`;
   document.getElementById('from-here')?.addEventListener('click', () => {
-    opts.venue = String(n.venue.id);
-    opts.when = 'any';
+    opts.venues = [venueKey(n.venue)];
+    opts.when = ['any'];
     store.set('options', opts);
     show = null;
     location.hash = '#/';

@@ -50,9 +50,18 @@ assert.equal(await page.textContent('#mins'), '1:10');
 assert.ok(Math.abs(secs(await page.textContent('.paper-foot .total')) - 4200) <= 60, '1:10 lands on 1:10');
 
 // Only the '90s.
+const setYears = () => page.$$eval('.set .meta', ms => ms.map(m => +m.textContent.match(/\b(19|20)\d\d\b/)[0]));
+const pressed = group => page.$$eval(`[data-opt="${group}"] [aria-pressed="true"]`, cs => cs.map(c => c.dataset.v));
 await page.tap('[data-opt="when"] [data-v="90s"]');
-const years = await page.$$eval('.set .meta', ms => ms.map(m => +m.textContent.match(/\b(19|20)\d\d\b/)[0]));
+const years = await setYears();
 assert.ok(years.length && years.every(y => y >= 1991 && y <= 1999), `only the '90s: ${years}`);
+// The 2020s as well: both on, and nothing from between.
+await page.tap('[data-opt="when"] [data-v="20s"]');
+assert.deepEqual(await pressed('when'), ['90s', '20s']);
+const ends = await setYears();
+assert.ok(ends.length && ends.every(y => y <= 1999 || y >= 2020), `the '90s and the 2020s: ${ends}`);
+await page.tap('[data-opt="when"] [data-v="20s"]');
+assert.deepEqual(await pressed('when'), ['90s'], 'tapping it again takes it off');
 
 // Open a song on the setlist, swap in another version, and the total changes to match.
 const before = await page.textContent('.paper-foot .total');
@@ -76,6 +85,24 @@ await page.tap('[data-opt="when"] [data-v="any"]');
 await page.goto(base + kept);
 await page.waitForSelector('.set .item');
 assert.equal(await page.textContent('.paper-foot .total'), keptTotal, 'a kept show comes back the same');
+
+// Where: two venues, and every song is from one of them. Tap one to take it off; Anywhere clears them.
+await page.goto(base + '#/');
+await page.waitForSelector('.set .item');
+const addVenue = name => page.$eval('#venue', (s, n) => [...s.options].find(o => o.text.startsWith(n)).value, name).then(v => page.selectOption('#venue', v));
+await addVenue('The Gorge Amphitheatre');
+await addVenue('Saratoga Performing Arts Center');
+assert.deepEqual(await page.$$eval('#where .chip', cs => cs.map(c => [c.firstChild.textContent, c.getAttribute('aria-pressed')])),
+  [['Anywhere', 'false'], ['The Gorge Amphitheatre', 'true'], ['Saratoga Performing Arts Center', 'true']]);
+assert.equal(await page.$eval('#venue', s => s.options[0].textContent), 'Add another venue');
+assert.equal(await page.$eval('#venue', s => [...s.options].filter(o => o.disabled).length), 2, 'a chosen venue can’t be added twice');
+const at = () => page.$$eval('.set .meta', ms => ms.map(m => m.textContent));
+assert.ok((await at()).every(t => /Gorge|Saratoga/.test(t)), 'every song from one of the two');
+await page.tap('#where .chip >> text=The Gorge Amphitheatre');
+assert.deepEqual(await pressed('venues'), ['Saratoga Performing Arts Center|Saratoga Springs, NY']);
+assert.ok((await at()).every(t => /Saratoga/.test(t)), 'then only Saratoga');
+await page.tap('#where [data-v=""]');
+assert.deepEqual(await pressed('venues'), [''], 'Anywhere again');
 
 // Songs: find one and open it.
 await page.tap('.tabs [data-tab="songs"]');
@@ -159,6 +186,18 @@ assert.ok((await page.$$('.year-nights .night-list li')).length > 3, 'the year l
 assert.equal(await sideways(), false, 'a year page scrolls sideways on a phone');
 await page.tap('.year-nav a >> text=2007');
 await page.waitForFunction(() => document.querySelector('.year-head h2')?.textContent.trim() === '2007');
+
+// Choices saved when "From when?" and "Where?" took one each come back the same.
+const gorge = await page.evaluate(() => window.nightAfterNight.M.venues.find(v => v.name === 'The Gorge Amphitheatre').id);
+await page.goto(base + '#/');
+await page.evaluate(id => localStorage.setItem('night-after-night.options', JSON.stringify({ minutes: 60, when: 'leroi', venue: String(id), picks: 'mix', jams: 'any', covers: true })), gorge);
+await page.reload();
+await page.waitForSelector('.set .item');
+assert.deepEqual(await pressed('when'), ['leroi']);
+assert.deepEqual(await page.$$eval('#where [aria-pressed="true"]', cs => cs.map(c => c.firstChild.textContent)), ['The Gorge Amphitheatre']);
+assert.ok((await setYears()).every(y => y <= 2008), 'with LeRoi');
+await page.tap('#where [data-v=""]');
+await page.tap('[data-opt="when"] [data-v="any"]');
 
 // Works offline once it has been opened.
 await page.goto(base);

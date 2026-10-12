@@ -49,13 +49,15 @@ function prep(M) {
 }
 
 // Every playable piece of the filtered recordings: a track, or a lead-in glued to the track it leads into.
+// opts.ranges is a list of [from, to] dates and opts.venues a list of venue ids; a night in any of them counts,
+// and an empty or missing list means any date, or anywhere.
 export function pool(M, opts = {}) {
   const { leadIns: glue } = prep(M);
-  const from = opts.from || '0000', to = opts.to || '9999';
+  const ranges = opts.ranges || [], venues = new Set(opts.venues || []);
   const items = [];
   for (const n of M.nights) {
-    if (n.date < from || n.date > to) continue;
-    if (opts.venue != null && n.venue?.id !== opts.venue) continue;
+    if (ranges.length && !ranges.some(([from, to]) => n.date >= from && n.date <= to)) continue;
+    if (venues.size && !venues.has(n.venue?.id)) continue;
     const tracks = n.tracks.filter(t => t.songs);
     tracks.forEach((t, k) => {
       if (!(t.secs > 0)) return;

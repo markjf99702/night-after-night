@@ -73,10 +73,10 @@ test('a show lands on the time, with no song twice', () => {
 
 test('choices are kept', () => {
   const rand = seeded(5);
-  const nineties = buildShow(M, { minutes: 90, from: '1991-01-01', to: '1999-12-31' }, rand);
+  const nineties = buildShow(M, { minutes: 90, ranges: [['1991-01-01', '1999-12-31']] }, rand);
   assert.ok(nineties.slots.every(s => s.item.night.date <= '1999-12-31'));
   const gorge = M.venues.find(v => v.name === 'The Gorge Amphitheatre');
-  const there = buildShow(M, { minutes: 60, venue: gorge.id }, rand);
+  const there = buildShow(M, { minutes: 60, venues: [gorge.id] }, rand);
   assert.ok(there.slots.length && there.slots.every(s => s.item.night.venue === gorge));
   const noCovers = buildShow(M, { minutes: 120, covers: false, picks: 'deep' }, rand);
   assert.ok(noCovers.slots.every(s => s.item.songs.every(x => !x.cover)));
@@ -84,6 +84,25 @@ test('choices are kept', () => {
   const short = buildShow(M, { minutes: 60, jams: 'short', picks: 'hits' }, seeded(9));
   assert.ok(long.slots.length < short.slots.length, 'long jams mean fewer songs in the hour');
   assert.equal(encoreSize(nineties.slots), nineties.slots.length >= 10 ? 2 : 1);
+});
+
+test('more than one time and place: a night in any of them', () => {
+  const ends = [['1991-01-01', '1999-12-31'], ['2020-01-01', '2029-12-31']];
+  const decades = pool(M, { ranges: ends }).map(it => it.night.date.slice(0, 3));
+  assert.deepEqual([...new Set(decades)].sort(), ['199', '202'], 'the ’90s and the 2020s, nothing between');
+  for (const seed of [1, 2, 3]) {
+    const show = buildShow(M, { minutes: 120, ranges: ends }, seeded(seed));
+    assert.ok(show.slots.every(s => /^(199|202)/.test(s.item.night.date)));
+  }
+  const gorge = M.venues.find(v => v.name === 'The Gorge Amphitheatre');
+  const spac = M.venues.find(v => v.name === 'Saratoga Performing Arts Center');
+  const both = pool(M, { venues: [gorge.id, spac.id] });
+  assert.deepEqual(new Set(both.map(it => it.night.venue)), new Set([gorge, spac]));
+  const show = buildShow(M, { minutes: 90, venues: [gorge.id, spac.id] }, seeded(4));
+  assert.ok(show.slots.length && show.slots.every(s => s.item.night.venue === gorge || s.item.night.venue === spac));
+  // Both together: the Gorge in the 2020s only.
+  assert.ok(pool(M, { venues: [gorge.id], ranges: [ends[1]] }).every(it => it.night.venue === gorge && it.night.year >= 2020));
+  assert.equal(pool(M, { ranges: [] }).length, pool(M).length, 'no choices: everything');
 });
 
 test('a share link brings back the same show', () => {
