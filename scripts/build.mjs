@@ -31,6 +31,7 @@ for (const [, file] of css.matchAll(/url\(\.\.\/(fonts\/[^)]+\.woff2)\)/g)) css 
 const icon = await dataUri('icon.svg', 'image/svg+xml');
 const html = (await read('index.html'))
   .replace(/ *<link rel="(manifest|apple-touch-icon|preload)"[^>]*>\n/g, '')
+  .replace(/ *<script src="carry\.js"><\/script>\n/, '')
   .replaceAll('"icon.svg"', () => `"${icon}"`)
   .replace('<link rel="stylesheet" href="css/app.css">', () => `<style>\n${css}</style>`)
   .replace(/ *<script type="module" src="js\/app.js"><\/script>\n/, '')

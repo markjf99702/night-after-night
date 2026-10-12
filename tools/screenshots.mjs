@@ -126,7 +126,7 @@ async function save(page, path, clip) {
     .paper { position: absolute; right: 24px; top: 26px; width: 590px; transform: rotate(3deg); transform-origin: top center; }
   </style></head><body>
     <div class="words"><h1>Night<br>After<br>Night</h1><p>Every official Dave Matthews Band live version, and a show built from them to fit your drive.</p></div>
-    <div class="site">junkdrawer.works/night-after-night</div>
+    <div class="site">night-after-night.junkdrawer.works</div>
     <img class="paper" src="data:image/png;base64,${paper.toString('base64')}">
   </body></html>`);
   await page.evaluate(() => document.fonts.ready);

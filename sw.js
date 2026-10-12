@@ -2,9 +2,9 @@
 // Anything the person saves lives in localStorage, not here.
 // Network first, so a new version shows up as soon as you're online.
 
-const CACHE = 'night-after-night-v2'; // bump the number when the file list changes
+const CACHE = 'night-after-night-v3'; // bump the number when the file list changes
 const SHELL = [
-  './', 'index.html', 'icon.svg', 'manifest.webmanifest',
+  './', 'index.html', 'carry.js', 'icon.svg', 'manifest.webmanifest',
   'css/app.css', 'js/app.js', 'js/data.js', 'js/model.js', 'js/builder.js', 'js/chart.js', 'js/lineup.js',
   'js/ui.js', 'js/insights.js', 'js/insight-pages.js',
   'fonts/archivo.woff2', 'fonts/permanent-marker.woff2', 'icon-192.png',

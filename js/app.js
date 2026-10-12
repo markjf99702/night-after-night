@@ -7,7 +7,7 @@ import { esc, plural, venueLine, songLink, nightLink, songsNav, nightRow, atPlac
 import { renderBefore, renderFlow, renderYear, yearsChart, beforeFact } from './insight-pages.js';
 
 const M = build(DATA);
-const SITE = 'https://junkdrawer.works/night-after-night/';
+const SITE = 'https://night-after-night.junkdrawer.works/';
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
 const sheetBody = document.getElementById('sheet-body');

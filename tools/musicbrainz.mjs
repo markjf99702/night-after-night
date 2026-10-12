@@ -16,7 +16,7 @@ import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, TOWNS
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(root, '.cache/musicbrainz');
 const API = 'https://musicbrainz.org/ws/2/';
-const UA = 'NightAfterNight/1.0 ( https://junkdrawer.works/night-after-night/ )';
+const UA = 'NightAfterNight/1.0 ( https://night-after-night.junkdrawer.works/ )';
 const BAND = '07e748f1-075e-428d-85dc-ce3be434e906'; // Dave Matthews Band
 const DAVE = '2fa95b32-3c11-42d7-b495-12fc6be0a024'; // Dave Matthews, for the songs from Some Devil
 const report = process.argv.includes('--report');
