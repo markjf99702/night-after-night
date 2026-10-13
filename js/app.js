@@ -433,6 +433,8 @@ function afterEdit() {
   show.total = show.slots.reduce((a, s) => a + s.item.secs, 0);
   closeSheet();
   renderPaper(false);
+  // A show opened from a link or Kept shows keeps its changes in the link, so coming Back to it brings them back.
+  if (location.hash.startsWith('#/show/')) history.replaceState(history.state, '', `#/show/${showMinutes}/${encode(show)}`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

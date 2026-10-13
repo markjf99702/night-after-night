@@ -90,6 +90,20 @@ await page.tap('[data-opt="when"] [data-v="any"]');
 await page.goto(base + kept);
 await page.waitForSelector('.set .item');
 assert.equal(await page.textContent('.paper-foot .total'), keptTotal, 'a kept show comes back the same');
+// Take a song out of it, go to another song's page and come Back: the show is still the changed one.
+const items = () => page.$$eval('.set .item', is => is.length);
+const keptCount = await items();
+await page.tap('.set .item >> nth=1');
+await page.tap('#sheet[open] #drop');
+assert.equal(await items(), keptCount - 1, 'one song fewer');
+const edited = await page.textContent('.paper-foot .total');
+await page.tap('.set .item >> nth=0');
+await page.tap('#sheet[open] a[href^="#/song/"]');
+await page.waitForSelector('.song-head');
+await page.goBack();
+await page.waitForSelector('.set .item');
+assert.equal(await items(), keptCount - 1, 'Back brings back the show as it was changed');
+assert.equal(await page.textContent('.paper-foot .total'), edited);
 
 // Where: two venues, and every song is from one of them. Tap one to take it off; Anywhere clears them.
 await page.goto(base + '#/');
