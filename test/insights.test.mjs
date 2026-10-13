@@ -74,6 +74,15 @@ test('a song page counts the song sharing its track as what came before or after
   }
 });
 
+test('a song opened a night only as its first song, and closed one only as its last', () => {
+  const F = flow(M);
+  const opened = new Map(F.after(START)), closed = new Map(F.before(END));
+  for (const s of M.songs) {
+    assert.equal(s.opens, opened.get(s) || 0, `${s.name} opened`);
+    assert.equal(s.closes, closed.get(s) || 0, `${s.name} closed`);
+  }
+});
+
 test('a year on the road', () => {
   const Y = yearStats(M, 2008);
   assert.ok(Y.nights.length && Y.nights.every(n => n.year === 2008));

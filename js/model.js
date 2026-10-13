@@ -139,7 +139,9 @@ export function build(data) {
       t.songs.forEach((s, pos) => {
         s.versions.push({
           song: s, night, track: t, pos, secs: t.secs, shared: t.songs.length > 1, date: night.date,
-          opener: night.whole && !t.extra && t.index === 0, closer: night.whole && !t.extra && t.index === main.length - 1,
+          // Only the first song of the first track opened the night, and only the last song of the last one closed it.
+          opener: night.whole && !t.extra && t.index === 0 && pos === 0,
+          closer: night.whole && !t.extra && t.index === main.length - 1 && pos === t.songs.length - 1,
         });
       });
     }
