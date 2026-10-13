@@ -1,12 +1,13 @@
 import DATA from './data.js';
 import { build, clock, duration, dateText, story } from './model.js';
 import { buildShow, encode, decode, encoreSize, pool, PICKS, JAMS } from './builder.js';
-import { lifeline, sparkline } from './chart.js';
+import { lifeline, sparkline, endYear } from './chart.js';
 import { bandOn } from './lineup.js';
 import { esc, plural, venueLine, songLink, nightLink, songsNav, nightRow, atPlace, placeText } from './ui.js';
 import { renderBefore, renderFlow, renderYear, yearsChart, beforeFact } from './insight-pages.js';
 
 const M = build(DATA);
+const chartEnd = endYear(M.years); // every chart runs to the same year
 const SITE = 'https://night-after-night.junkdrawer.works/';
 const view = document.getElementById('view');
 const sheet = document.getElementById('sheet');
@@ -485,7 +486,7 @@ function renderSongs() {
       const sub = [plural(s.count, 'version'), s.first.date.slice(0, 4) === s.last.date.slice(0, 4) ? s.first.date.slice(0, 4) : `${s.first.date.slice(0, 4)}–${s.last.date.slice(0, 4)}`,
         s.cover ? 'cover' : s.album ? esc(s.album.album.name) : ''].filter(Boolean).join(' · ');
       const right = sort.value === 'grew' && s.stretch ? `${s.stretch.toFixed(1)}×<small>the album</small>` : s.median ? `${clock(s.median)}<small>usually</small>` : '';
-      return `<li><a href="#/song/${s.slug}"><span><span class="name">${esc(s.name)}</span><span class="sub">${sub}</span></span>${sparkline(s)}<span class="med">${right}</span></a></li>`;
+      return `<li><a href="#/song/${s.slug}"><span><span class="name">${esc(s.name)}</span><span class="sub">${sub}</span></span>${sparkline(s, chartEnd)}<span class="med">${right}</span></a></li>`;
     }).join('') : '<li class="empty-note">No songs match.</li>';
   };
   q.addEventListener('input', draw);
@@ -616,7 +617,7 @@ function versionRows(s, order) {
 function drawChart() {
   const box = document.getElementById('chart-box');
   if (!box || !chartState) return;
-  const { svg, points, width } = lifeline(chartState.song, { width: box.clientWidth, selected: chartState.selected });
+  const { svg, points, width } = lifeline(chartState.song, { width: box.clientWidth, selected: chartState.selected, end: chartEnd });
   box.innerHTML = svg;
   chartState.points = points;
   const el = box.firstElementChild;

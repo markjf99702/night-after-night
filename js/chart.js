@@ -4,13 +4,16 @@ import { LINEUP, ROWS } from './lineup.js';
 import { clock, trend, yearOf } from './model.js';
 import { plural } from './ui.js';
 
-export const START = 1991.6, END = 2027;
+// The years along the bottom run from just before the first release to the end of the year after the newest one
+// (2027 at least), so a release from next year still lands inside. Every chart takes the same end, from endYear.
+export const START = 1991.6;
+export const endYear = years => Math.max(2027, ...years.map(y => y + 1));
 
-export function sparkline(song) {
+export function sparkline(song, end = 2027) {
   const W = 96, H = 28;
   const timed = song.versions.filter(v => v.secs > 0);
   const max = Math.max(1, song.album?.length || 0, ...timed.map(v => v.secs));
-  const x = d => 3 + (yearOf(d) - START) / (END - START) * (W - 6);
+  const x = d => 3 + (yearOf(d) - START) / (end - START) * (W - 6);
   const y = s => H - 3 - (s / max) * (H - 6);
   let out = `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
   if (song.album) out += `<line x1="3" x2="${W - 3}" y1="${y(song.album.length).toFixed(1)}" y2="${y(song.album.length).toFixed(1)}"/>`;
@@ -21,7 +24,7 @@ export function sparkline(song) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // Returns the SVG and where each dot landed, so the page can find the dot nearest a tap.
-export function lifeline(song, { width = 700, selected = null } = {}) {
+export function lifeline(song, { width = 700, selected = null, end = 2027 } = {}) {
   const W = Math.max(300, Math.round(width));
   const narrow = W < 520;
   const L = narrow ? 50 : 56, R = 10, T = 22;
@@ -33,7 +36,7 @@ export function lifeline(song, { width = 700, selected = null } = {}) {
   const maxSecs = Math.max(60, song.album?.length || 0, ...timed.map(v => v.secs));
   const maxMin = Math.max(4, Math.ceil(maxSecs / 60 / (maxSecs > 900 ? 5 : 2)) * (maxSecs > 900 ? 5 : 2));
   const step = maxMin > 14 ? 5 : maxMin > 6 ? 2 : 1;
-  const x = yr => L + (yr - START) / (END - START) * (W - L - R);
+  const x = yr => L + (yr - START) / (end - START) * (W - L - R);
   const y = secs => T + plotH - (secs / 60) / maxMin * plotH;
   let svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(summary(song))}">`;
 
@@ -43,7 +46,7 @@ export function lifeline(song, { width = 700, selected = null } = {}) {
     svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(m * 60)}" y2="${y(m * 60)}"/>`;
     svg += `<text x="${L - 6}" y="${y(m * 60) + 4}" text-anchor="end">${m}</text>`;
   }
-  for (let yr = 1995; yr <= 2025; yr += 5) {
+  for (let yr = 1995; yr <= end - 2; yr += 5) {
     const label = narrow ? `’${String(yr).slice(2)}` : yr;
     svg += `<line class="grid" x1="${x(yr)}" x2="${x(yr)}" y1="${T + plotH}" y2="${T + plotH + 5}"/>`;
     svg += `<text x="${x(yr)}" y="${T + plotH + 18}" text-anchor="middle">${label}</text>`;
