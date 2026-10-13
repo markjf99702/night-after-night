@@ -204,6 +204,33 @@ assert.ok((await setYears()).every(y => y <= 2008), 'with LeRoi');
 await page.tap('#where [data-v=""]');
 await page.tap('[data-opt="when"] [data-v="any"]');
 
+// Junk in storage doesn't stop the page: a kept-shows list that isn't one, or choices that aren't on the page.
+const stored = key => page.evaluate(k => JSON.parse(localStorage.getItem('night-after-night.' + k)), key);
+const junk = async (key, value) => {
+  await page.evaluate(([k, v]) => localStorage.setItem('night-after-night.' + k, v), [key, value]);
+  await page.reload();
+  await page.waitForSelector('.set .item', { timeout: 10000 });
+};
+await page.goto(base + '#/');
+await junk('saved', '"str"');
+await junk('saved', JSON.stringify([null, 5, { name: 'A kept show', minutes: 90, code: '19981208~seek-up', at: '2026-10-13' }]));
+assert.deepEqual(await page.$$eval('#saved li a', as => as.map(a => a.textContent)), ['A kept show'], 'only the kept show is listed');
+await page.tap('#saved .del');
+assert.deepEqual(await stored('saved'), [null, 5], 'Remove takes out the show it’s next to');
+await junk('saved', '{}');
+await page.tap('#save');
+await page.waitForSelector('#saved li a');
+assert.equal((await stored('saved')).length, 1, 'Keep it starts a new list');
+for (const minutes of ['"abc"', '-50', '100000']) {
+  await junk('options', `{"minutes":${minutes}}`);
+  assert.equal(await page.textContent('#mins'), '1:30', `minutes ${minutes} go back to 90`);
+}
+await junk('options', '{"minutes":60,"when":["toString"],"from":"x","to":1800,"picks":"nope","jams":5,"covers":"yes"}');
+assert.equal(await page.textContent('#mins'), '1:00');
+assert.deepEqual([await pressed('when'), await pressed('picks'), await pressed('jams')], [['any'], ['mix'], ['any']], 'the usual choices instead');
+assert.equal(await page.isChecked('#covers'), true);
+await page.evaluate(() => ['saved', 'options'].forEach(k => localStorage.removeItem('night-after-night.' + k)));
+
 // Back to Nights or Songs comes back to the same spot, and to what was in the Nights search; a new visit starts at the top.
 const scrolled = () => page.evaluate(() => Math.round(scrollY));
 const backTo = async (spot, what) => {

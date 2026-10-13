@@ -125,10 +125,13 @@ let opts = readOptions();
 let show = null;
 let showMinutes = opts.minutes;
 
-// The saved choices, including ones saved when each of those took a single choice.
+// The saved choices, including ones saved when each of those took a single choice. Anything that isn't one of the
+// choices on the page goes back to the usual one.
+function own(obj, k) { return Object.prototype.hasOwnProperty.call(obj, k); }
 function readOptions() {
-  const o = { ...DEFAULTS, ...store.get('options', {}) };
-  o.when = [].concat(o.when).filter(k => k !== 'any' && WHEN[k]);
+  const saved = store.get('options', {});
+  const o = { ...DEFAULTS, ...(saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}) };
+  o.when = [].concat(o.when).filter(k => k !== 'any' && own(WHEN, k));
   if (!o.when.length) o.when = ['any'];
   if ('venue' in o) {
     const v = o.venue === '' ? null : M.venues[+o.venue];
@@ -136,6 +139,13 @@ function readOptions() {
     delete o.venue;
   }
   o.venues = [].concat(o.venues).filter(k => venueByKey.has(k));
+  const minutes = Math.round(o.minutes);
+  o.minutes = minutes >= 15 && minutes <= 240 ? minutes : DEFAULTS.minutes;
+  o.from = M.years.includes(+o.from) ? +o.from : DEFAULTS.from;
+  o.to = M.years.includes(+o.to) ? +o.to : DEFAULTS.to;
+  if (!own(PICKS, o.picks)) o.picks = DEFAULTS.picks;
+  if (!own(JAMS, o.jams)) o.jams = DEFAULTS.jams;
+  if (typeof o.covers !== 'boolean') o.covers = DEFAULTS.covers;
   return o;
 }
 
@@ -343,9 +353,17 @@ async function shareShow() {
   copy(url, 'Copied a link to this show.');
 }
 
+// The kept shows as stored. Each is { name, minutes, code, at }; anything else in the list is left where it is but
+// not shown, so Remove takes out the one it's next to.
+function keptList() {
+  const list = store.get('saved', []);
+  return Array.isArray(list) ? list : [];
+}
+const isKept = s => typeof s?.code === 'string' && Number.isFinite(s.minutes);
+
 function keepShow() {
   if (!show?.slots.length) return;
-  const saved = store.get('saved', []);
+  const saved = keptList();
   const name = `${duration(show.total)}: ${show.slots[0].item.songs[0].name} to ${show.slots.at(-1).item.songs.at(-1).name}`;
   saved.unshift({ name, minutes: showMinutes, code: encode(show), at: new Date().toISOString().slice(0, 10) });
   store.set('saved', saved.slice(0, 30));
@@ -356,12 +374,12 @@ function keepShow() {
 function renderSaved() {
   const el = document.getElementById('saved');
   if (!el) return;
-  const saved = store.get('saved', []);
+  const saved = keptList().map((s, i) => [s, i]).filter(([s]) => isKept(s));
   el.hidden = !saved.length;
-  el.innerHTML = saved.length ? `<h3 class="section-title">Kept shows</h3><ul>${saved.map((s, i) => `
+  el.innerHTML = saved.length ? `<h3 class="section-title">Kept shows</h3><ul>${saved.map(([s, i]) => `
     <li><a href="#/show/${s.minutes}/${esc(s.code)}">${esc(s.name)}</a><button type="button" class="del" data-del="${i}">Remove</button></li>`).join('')}</ul>` : '';
   el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
-    const list = store.get('saved', []);
+    const list = keptList();
     list.splice(+b.dataset.del, 1);
     store.set('saved', list);
     renderSaved();
