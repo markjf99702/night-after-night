@@ -275,6 +275,12 @@ await junk('options', '{"minutes":60,"when":["toString"],"from":"x","to":1800,"p
 assert.equal(await page.textContent('#mins'), '1:00');
 assert.deepEqual([await pressed('when'), await pressed('picks'), await pressed('jams')], [['any'], ['mix'], ['any']], 'the usual choices instead');
 assert.equal(await page.isChecked('#covers'), true);
+// When the browser won't keep anything (a private window, blocked site data), Keep it says so.
+await page.evaluate(() => { window.keepItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new DOMException('Not allowed', 'SecurityError'); }; });
+await page.tap('#save');
+assert.equal(await page.textContent('#toast'), 'Your browser wouldn’t let the page keep it.');
+assert.equal((await stored('saved')).length, 1, 'nothing more was kept');
+await page.evaluate(() => { Storage.prototype.setItem = window.keepItem; });
 await page.evaluate(() => ['saved', 'options'].forEach(k => localStorage.removeItem('night-after-night.' + k)));
 
 // A share link cut off in the middle of a %-escape still opens the show, all but the song that was cut.

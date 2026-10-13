@@ -17,8 +17,8 @@ const store = {
   get(key, fallback) {
     try { const v = localStorage.getItem('night-after-night.' + key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
   },
-  set(key, value) {
-    try { localStorage.setItem('night-after-night.' + key, JSON.stringify(value)); } catch { /* not saved */ }
+  set(key, value) { // true if it was saved
+    try { localStorage.setItem('night-after-night.' + key, JSON.stringify(value)); return true; } catch { return false; }
   },
 };
 
@@ -366,7 +366,7 @@ function keepShow() {
   const saved = keptList();
   const name = `${duration(show.total)}: ${show.slots[0].item.songs[0].name} to ${show.slots.at(-1).item.songs.at(-1).name}`;
   saved.unshift({ name, minutes: showMinutes, code: encode(show), at: new Date().toISOString().slice(0, 10) });
-  store.set('saved', saved.slice(0, 30));
+  if (!store.set('saved', saved.slice(0, 30))) { toast('Your browser wouldn’t let the page keep it.'); return; }
   renderSaved();
   toast('Kept. It’s under Kept shows.');
 }
