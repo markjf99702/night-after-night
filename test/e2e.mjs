@@ -389,6 +389,14 @@ const pickScrolls = await scrollsWhile(() => page.tap('#vlist li:nth-last-child(
 assert.ok(pickScrolls <= 3, `picking a version went straight to its card (${pickScrolls} scroll events)`);
 await page.emulateMedia({ reducedMotion: 'no-preference' });
 
+// A night with some tracks released without a length gives no total, which would be short.
+const someUntimed = await page.evaluate(() => window.nightAfterNight.M.nights.find(n => !n.timed && n.total)?.date);
+if (someUntimed) {
+  await page.goto(`${base}#/night/${someUntimed}`);
+  await page.waitForSelector('.night-head .where');
+  assert.doesNotMatch(await page.textContent('.night-head .where'), /\d:\d\d/, `${someUntimed}: no total`);
+}
+
 // A song only ever released on a track with another: each lineup's versions are counted, with no length to show.
 const sharedOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => !s.median)?.slug);
 if (sharedOnly) {

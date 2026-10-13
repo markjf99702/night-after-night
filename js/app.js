@@ -758,7 +758,7 @@ function renderNight(date) {
     <header class="night-head">
       <p class="kicker">${esc(dateText(date, 'long').replace(/\d{4}$/, ''))}<a href="#/year/${n.year}">${n.year}</a></p>
       <h2>${esc(n.place)}</h2>
-      <p class="where">${esc(n.town || 'Venue not listed')} · ${esc(n.release.label)} · ${plural(n.songCount, 'song')}${n.total ? ` · ${clock(n.total)}` : ''}</p>
+      <p class="where">${esc(n.town || 'Venue not listed')} · ${esc(n.release.label)} · ${plural(n.songCount, 'song')}${n.timed && n.total ? ` · ${clock(n.total)}` : ''}</p>
       <p class="band">On stage: ${esc(band.slice(0, -1).join(', '))} and ${esc(band.at(-1))}.</p>
     </header>
     ${!n.whole && n.songCount >= 5 ? '<p class="muted small" style="margin:14px 0 0">Not every song from this night was released, so this isn’t the whole setlist.</p>' : ''}
