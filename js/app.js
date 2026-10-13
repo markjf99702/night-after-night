@@ -575,7 +575,7 @@ function eras(s) {
       <span class="m">${e.median ? clock(e.median) : '–'}</span>
       <span class="bar">${e.median ? `<span style="width:${(e.median / max * 100).toFixed(1)}%"></span>` : ''}${s.album?.length ? `<i class="album-tick" style="left:${(s.album.length / max * 100).toFixed(1)}%" title="Album version"></i>` : ''}</span>
     </div>`).join('');
-  return rows + `<p class="muted small" style="margin:0">Typical length of the released versions${s.album?.length ? '; the dark tick is the album version' : ''}.</p>`;
+  return rows + `<p class="muted small" style="margin:0">Typical length of the released versions${s.album?.length ? '; the tick is the album version' : ''}.</p>`;
 }
 
 function facts(s) {

@@ -153,6 +153,8 @@ assert.match(await page.textContent('.song-head h2'), /Two Step/i);
 const dots = await page.$$eval('#chart-box .dot', d => d.length);
 assert.ok(dots > 40, `Two Step has its versions on the chart (${dots})`);
 assert.match(await page.textContent('.headline'), /official live versions/);
+// The album version's tick is dark in the light scheme and light in the dark one, so the caption says neither.
+assert.match(await page.textContent('.eras'), /; the tick is the album version\./);
 assert.equal(await sideways(), false, 'the song page scrolls sideways on a phone');
 // Tap a version in the list and the card shows it.
 await page.tap('#vsort [data-v="long"]');
