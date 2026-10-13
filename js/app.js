@@ -368,8 +368,11 @@ const isKept = s => typeof s?.code === 'string' && Number.isFinite(s.minutes);
 function keepShow() {
   if (!show?.slots.length) return;
   const saved = keptList();
+  const code = encode(show);
+  const newest = saved.find(isKept);
+  if (newest?.code === code && newest.minutes === showMinutes) { toast('Kept. It’s under Kept shows.'); return; } // a second tap
   const name = `${duration(show.total)}: ${show.slots[0].item.songs[0].name} to ${show.slots.at(-1).item.songs.at(-1).name}`;
-  saved.unshift({ name, minutes: showMinutes, code: encode(show), at: new Date().toISOString().slice(0, 10) });
+  saved.unshift({ name, minutes: showMinutes, code, at: new Date().toISOString().slice(0, 10) });
   if (!store.set('saved', saved.slice(0, 30))) { toast('Your browser wouldn’t let the page keep it.'); return; }
   renderSaved();
   toast('Kept. It’s under Kept shows.');

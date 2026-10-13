@@ -98,9 +98,11 @@ await byKeys(last, async () => '#sheet #drop');
 assert.equal(await focused(), last - 1, 'focus moves to the song before the one taken out');
 assert.ok(before, 'had a total before');
 
-// Keep it, and it's listed; the link opens the same show.
+// Keep it, and it's listed; the link opens the same show. A quick second tap doesn't keep it twice.
+await page.tap('#save');
 await page.tap('#save');
 await page.waitForSelector('#saved li a');
+assert.equal((await page.$$('#saved li')).length, 1, 'kept once');
 const kept = await page.getAttribute('#saved li a', 'href');
 const keptTotal = await page.textContent('.paper-foot .total');
 await page.tap('[data-opt="when"] [data-v="any"]');
