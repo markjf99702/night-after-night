@@ -63,11 +63,16 @@ assert.ok(ends.length && ends.every(y => y <= 1999 || y >= 2020), `the '90s and 
 await page.tap('[data-opt="when"] [data-v="20s"]');
 assert.deepEqual(await pressed('when'), ['90s'], 'tapping it again takes it off');
 
-// Open a song on the setlist, swap in another version, and the total changes to match.
+// Open a song on the setlist, swap in another version, and the total changes to match. The show is random, and a
+// song with one version from the '90s has nothing to swap, so it opens songs until one has.
 const before = await page.textContent('.paper-foot .total');
-await page.tap('.set .item >> nth=0');
-await page.waitForSelector('#sheet[open] .others button');
-const others = await page.$$('#sheet .others button:not([aria-current])');
+let others = [];
+for (let i = 0; i < 6 && !others.length; i++) {
+  await page.tap(`.set .item >> nth=${i}`);
+  await page.waitForSelector('#sheet[open] .others');
+  others = await page.$$('#sheet .others button:not([aria-current])');
+  if (!others.length) await page.tap('#sheet [data-close]');
+}
 assert.ok(others.length > 0, 'other versions to swap in');
 await others[0].tap();
 assert.equal(await page.$('#sheet[open]'), null, 'the sheet closes after a swap');
