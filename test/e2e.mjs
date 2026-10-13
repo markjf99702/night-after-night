@@ -187,6 +187,8 @@ assert.match(await page.textContent('.band'), /Dave Matthews/);
 
 // Nights: Worcester 1998 is there.
 await page.tap('.tabs [data-tab="nights"]');
+// The order button says the order it's in, so it isn't a toggle that's always read as "not pressed".
+assert.equal(await page.getAttribute('#order-btn', 'aria-pressed'), null);
 await page.fill('#nq', 'worcester');
 await page.tap('.night-list a >> text=Worcester Centrum Centre');
 await page.waitForSelector('.night-head');

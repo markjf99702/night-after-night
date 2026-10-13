@@ -699,7 +699,7 @@ function renderNights() {
     </figure>
     <div class="list-tools">
       <input type="search" id="nq" placeholder="Find a venue or town" aria-label="Find a venue or town" autocomplete="off">
-      <button type="button" class="chip" id="order-btn" aria-pressed="false">${newestFirst ? 'Newest first' : 'Oldest first'}</button>
+      <button type="button" class="chip" id="order-btn">${newestFirst ? 'Newest first' : 'Oldest first'}</button>
     </div>
     <nav class="year-jump" aria-label="Years">${years.map(y => `<a href="#/nights" data-year="${y}">${y}</a>`).join('')}</nav>
     <div id="years-list"></div>
