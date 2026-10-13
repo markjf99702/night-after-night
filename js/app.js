@@ -67,6 +67,9 @@ function extras(t) {
   return out.join('; ');
 }
 
+// Scrolls glide, unless the phone or computer is set to cut down on motion.
+const glide = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+
 let toastTimer;
 function toast(text) {
   const el = document.getElementById('toast');
@@ -273,7 +276,7 @@ function changed() {
   const paper = document.getElementById('paper');
   const top = paper?.getBoundingClientRect().top;
   if (paper && matchMedia('(max-width: 860px)').matches && (top < 40 || top > innerHeight * 0.75)) {
-    document.querySelector('.paper-wrap').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    document.querySelector('.paper-wrap').scrollIntoView({ behavior: glide(), block: 'start' });
   }
 }
 
@@ -666,7 +669,7 @@ function pick(v, scroll, hover) {
     }
     document.querySelectorAll('#vlist button').forEach(b => b.setAttribute('aria-current', String(s.versions[+b.dataset.v] === v)));
     history.replaceState(null, '', `#/song/${s.slug}/${v.date}`);
-    if (scroll) document.getElementById('picked').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (scroll) document.getElementById('picked').scrollIntoView({ block: 'nearest', behavior: glide() });
   } else {
     const box = document.getElementById('chart-box');
     const ring = box?.querySelector('.ring');
@@ -723,7 +726,7 @@ function renderNights() {
     const a = e.target.closest('[data-year]');
     if (!a) return;
     e.preventDefault();
-    document.getElementById('y' + a.dataset.year)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('y' + a.dataset.year)?.scrollIntoView({ behavior: glide(), block: 'start' });
   });
   draw();
 }

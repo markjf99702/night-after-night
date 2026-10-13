@@ -365,6 +365,30 @@ if (partOnly) {
   assert.equal(await page.$$eval('.facts a[href^="#/flow/"]', as => as.length), 0, `${partOnly}: no What leads where link`);
 }
 
+// With reduced motion, the Nights year jump and picking a version go straight there instead of gliding.
+await page.emulateMedia({ reducedMotion: 'reduce' });
+const scrollsWhile = async act => {
+  await settle();
+  await page.evaluate(() => {
+    window.scrolls = 0;
+    if (!window.countingScrolls) { window.countingScrolls = true; addEventListener('scroll', () => window.scrolls++, { passive: true }); }
+  });
+  await act();
+  await settle();
+  return page.evaluate(() => window.scrolls);
+};
+await page.goto(`${base}#/nights`);
+await page.waitForSelector('.year-jump a[data-year="2010"]');
+await page.$eval('.year-jump a[data-year="2010"]', a => a.scrollIntoView({ block: 'center' }));
+const jumpScrolls = await scrollsWhile(() => page.tap('.year-jump a[data-year="2010"]'));
+assert.ok(jumpScrolls <= 3, `the year jump went straight to 2010 (${jumpScrolls} scroll events)`);
+await page.goto(`${base}#/song/two-step`);
+await page.tap('#vmore');
+await page.$eval('#vlist li:nth-last-child(3) button', b => b.scrollIntoView({ block: 'center' }));
+const pickScrolls = await scrollsWhile(() => page.tap('#vlist li:nth-last-child(3) button'));
+assert.ok(pickScrolls <= 3, `picking a version went straight to its card (${pickScrolls} scroll events)`);
+await page.emulateMedia({ reducedMotion: 'no-preference' });
+
 // A song only ever released on a track with another: each lineup's versions are counted, with no length to show.
 const sharedOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => !s.median)?.slug);
 if (sharedOnly) {
