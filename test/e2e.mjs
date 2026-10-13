@@ -148,6 +148,17 @@ const box = await page.$eval('#chart-box .dot', d => { const r = d.getBoundingCl
 await page.mouse.click(box.x, box.y);
 assert.match(await page.evaluate(() => location.hash), /^#\/song\/two-step\/\d{4}-\d{2}-\d{2}$/, 'tapping a dot picks it');
 assert.ok((await page.textContent('#picked h3')).trim(), 'the card names the night');
+// A version from far down the list scrolls the card back into view below the tabs, not under them.
+const settle = () => page.evaluate(() => new Promise(done => {
+  let last = -1, still = 0;
+  const tick = () => { still = scrollY === last ? still + 1 : 0; last = scrollY; if (still > 8) done(); else requestAnimationFrame(tick); };
+  tick();
+}));
+await page.tap('#vmore');
+await page.tap('#vlist li:nth-last-child(3) button');
+await settle();
+const [cardTop, tabsBottom] = await page.evaluate(() => [document.getElementById('picked').getBoundingClientRect().top, document.querySelector('.tabs').getBoundingClientRect().bottom]);
+assert.ok(cardTop >= tabsBottom - 1, `the card is below the tabs (${cardTop} against ${tabsBottom})`);
 
 // The whole night.
 await page.tap('#picked a[href^="#/night/"]');

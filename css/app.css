@@ -266,7 +266,7 @@ select { padding-right: 28px; }
 .legend i.line { width: 18px; height: 0; border-radius: 0; border-top: 2px dashed var(--ink); opacity: .7; vertical-align: 3px; background: none; }
 .legend i.trend { width: 18px; height: 0; border-radius: 0; border-top: 2.5px solid var(--trend); opacity: .55; vertical-align: 3px; background: none; }
 
-.picked { margin: 14px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); }
+.picked { margin: 14px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); scroll-margin-top: 70px; }
 .picked h3 { font-size: 17px; font-weight: 700; }
 .picked .when { color: var(--muted); font-size: 14px; margin: 0 0 2px; }
 .picked p { margin: 6px 0 0; }
