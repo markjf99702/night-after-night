@@ -781,15 +781,29 @@ function route() {
   document.title = titles[page] ? `${titles[page]} · Night After Night` : 'Night After Night';
 }
 
+// Back comes back to the same spot on a page: following a link keeps how far down the page you were, and what was
+// in the Nights search, with the page's place in the history, and coming back to it puts them back.
+document.addEventListener('click', e => {
+  if (!e.target.closest?.('a[href^="#"]')) return;
+  try { history.replaceState({ y: Math.round(scrollY), nq: document.getElementById('nq')?.value || '' }, ''); } catch { /* not kept */ }
+}, true);
+
 let lastPage = null;
 addEventListener('hashchange', () => {
   const page = location.hash.replace(/^#\/?/, '').split('/').slice(0, 2).join('/');
   const was = lastPage;
+  const left = history.state; // read before the page is drawn: a song page replaces it
   route();
-  // Following a song around the map keeps the map in view; anything else starts at the top.
-  const map = /^flow\b/.test(page) && /^flow\b/.test(was || '') && document.querySelector('.flow-pick');
-  if (map && map.getBoundingClientRect().top < 60) map.scrollIntoView({ block: 'start' });
-  else if (!map && page !== was) scrollTo({ top: 0 });
+  if (Number.isFinite(left?.y)) {
+    const nq = document.getElementById('nq');
+    if (nq && left.nq) { nq.value = left.nq; nq.dispatchEvent(new Event('input')); }
+    scrollTo({ top: left.y });
+  } else {
+    // Following a song around the map keeps the map in view; anything else starts at the top.
+    const map = /^flow\b/.test(page) && /^flow\b/.test(was || '') && document.querySelector('.flow-pick');
+    if (map && map.getBoundingClientRect().top < 60) map.scrollIntoView({ block: 'start' });
+    else if (!map && page !== was) scrollTo({ top: 0 });
+  }
   lastPage = page;
 });
 lastPage = location.hash.replace(/^#\/?/, '').split('/').slice(0, 2).join('/');

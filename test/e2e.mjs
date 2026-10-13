@@ -204,6 +204,41 @@ assert.ok((await setYears()).every(y => y <= 2008), 'with LeRoi');
 await page.tap('#where [data-v=""]');
 await page.tap('[data-opt="when"] [data-v="any"]');
 
+// Back to Nights or Songs comes back to the same spot, and to what was in the Nights search; a new visit starts at the top.
+const scrolled = () => page.evaluate(() => Math.round(scrollY));
+const backTo = async (spot, what) => {
+  await page.goBack();
+  await page.waitForFunction(y => Math.abs(scrollY - y) <= 2, spot, { timeout: 5000 }).catch(() => {});
+  assert.ok(Math.abs(await scrolled() - spot) <= 2, `Back to ${what} comes back to ${spot}, not ${await scrolled()}`);
+};
+await page.tap('.tabs [data-tab="nights"]');
+await page.waitForSelector('#y2012 .night-list a');
+await page.$eval('#y2012 .night-list a', a => a.scrollIntoView({ block: 'center' }));
+const nightsSpot = await scrolled();
+assert.ok(nightsSpot > 2000, `scrolled well down the Nights (${nightsSpot})`);
+await page.tap('#y2012 .night-list a');
+await page.waitForSelector('.night-head');
+await backTo(nightsSpot, 'Nights');
+await page.tap('.tabs [data-tab="songs"]');
+await page.waitForSelector('#songs a');
+assert.equal(await scrolled(), 0, 'a new visit starts at the top');
+await page.fill('#q', '');
+await page.$eval('#songs li:nth-child(60) a', a => a.scrollIntoView({ block: 'center' }));
+const songsSpot = await scrolled();
+assert.ok(songsSpot > 2000, `scrolled well down the Songs (${songsSpot})`);
+await page.tap('#songs li:nth-child(60) a');
+await page.waitForSelector('.song-head');
+await backTo(songsSpot, 'Songs');
+await page.tap('.tabs [data-tab="nights"]');
+await page.fill('#nq', 'gorge');
+await page.tap('.night-list a >> nth=2');
+await page.waitForSelector('.night-head');
+await page.goBack();
+await page.waitForFunction(() => document.getElementById('nq')?.value === 'gorge', null, { timeout: 5000 }).catch(() => {});
+assert.equal(await page.inputValue('#nq'), 'gorge', 'the Nights search comes back');
+assert.ok((await page.$$eval('.night-list .v', vs => vs.map(v => v.textContent))).every(t => /gorge/i.test(t)), 'and still finds only the Gorge');
+await page.fill('#nq', '');
+
 // A song only ever released on a track with another: each lineup's versions are counted, with no length to show.
 const sharedOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => !s.median)?.slug);
 if (sharedOnly) {
