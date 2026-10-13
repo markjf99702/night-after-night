@@ -794,7 +794,9 @@ function route() {
     try { code = decodeURIComponent(b); } catch { code = b.replace(/%([0-9a-f]{2})/gi, (m, hex) => String.fromCharCode(parseInt(hex, 16))); }
     const shared = decode(M, code);
     if (shared.slots.length) {
-      shared.minutes = +a || Math.round(shared.total / 60);
+      // The time the link asked for, if it's one the page could have asked for; otherwise the show's own length.
+      const asked = +a;
+      shared.minutes = Number.isInteger(asked) && asked >= 15 && asked <= 240 ? asked : Math.round(shared.total / 60);
       renderBuilder(shared);
     } else renderBuilder();
   } else if (page === 'songs') renderSongs();

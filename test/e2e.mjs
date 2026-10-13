@@ -295,6 +295,16 @@ for (const link of [worcester.join(',') + '%2', worcester.join('%2C') + '%2']) {
   assert.equal((await page.$$('.set .item')).length, 2, `the two songs before the cut: ${link}`);
 }
 
+// A time in a link the page couldn't have asked for is read as the show's own length, not "-1:-5:00".
+for (const minutes of ['-5', '99999', '2.5', 'x']) {
+  await page.goto(`${base}#/songs`);
+  await page.waitForSelector('#songs a');
+  await page.goto(`${base}#/show/${minutes}/${worcester.join(',')}`);
+  await page.waitForSelector('.set .item');
+  const total = secs(await page.textContent('.paper-foot .total'));
+  assert.equal(secs(await page.textContent('.paper-head .num')), Math.round(total / 60) * 60, `a link asking for ${minutes} minutes`);
+}
+
 // Back to Nights or Songs comes back to the same spot, and to what was in the Nights search; a new visit starts at the top.
 const scrolled = () => page.evaluate(() => Math.round(scrollY));
 const backTo = async (spot, what) => {
