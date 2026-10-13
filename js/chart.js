@@ -2,6 +2,7 @@
 // the band's lineup underneath it on the same years, and the small copy of the lifeline in the song list.
 import { LINEUP, ROWS } from './lineup.js';
 import { clock, trend, yearOf } from './model.js';
+import { plural } from './ui.js';
 
 export const START = 1991.6, END = 2027;
 
@@ -97,9 +98,12 @@ export function lifeline(song, { width = 700, selected = null } = {}) {
   return { svg, points, width: W, height: H };
 }
 
+// The chart in words, for screen readers: "Tangerine: 1 official live version from 1992, usually 2:10 long".
 function summary(song) {
   const timed = song.versions.filter(v => v.secs > 0);
   if (!timed.length) return `${song.name}: no timed versions`;
-  return `${song.name}: ${song.count} official live versions from ${song.first.date.slice(0, 4)} to ${song.last.date.slice(0, 4)}, usually ${clock(song.median)} long`
-    + (song.album ? `, against ${clock(song.album.length)} on ${song.album.album.name}` : '');
+  const from = song.first.date.slice(0, 4), to = song.last.date.slice(0, 4);
+  return `${song.name}: ${plural(song.count, 'official live version')} from ${from}${to !== from ? ` to ${to}` : ''}`
+    + (song.median ? `, usually ${clock(song.median)} long` : '') // no typical length when every version shared a track
+    + (song.album?.length ? `, against ${clock(song.album.length)} on ${song.album.album.name}` : '');
 }

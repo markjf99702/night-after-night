@@ -51,7 +51,7 @@ It's a static site: plain HTML, CSS and JavaScript modules, with no build step.
 ```sh
 npx serve .                   # or any static file server, then open the printed address
 npm install                   # only for the tools below: esbuild and upng-js
-npm test                      # the title reader, the show builder and the insights, then the real page in Chromium (needs Playwright)
+npm test                      # the title reader, the show builder, the insights and the charts, then the real page in Chromium (needs Playwright)
 node tools/musicbrainz.mjs    # refreshes js/data.js from MusicBrainz (--report lists every song and venue)
 node tools/screenshots.mjs    # redraws docs/*.png and og.png
 node tools/make-icons.mjs     # redraws the PNG icons from icon.svg
@@ -69,4 +69,4 @@ To put it online with GitHub Pages: **Settings → Pages → Build and deploymen
 - `js/chart.js`: a song's timeline with the lineup underneath, and the small one in the song list. `js/app.js`: the other pages. `js/ui.js`: bits of markup they share.
 - `fonts/`: Archivo (SIL Open Font License) and Permanent Marker (Apache License 2.0), served from here so nothing loads from elsewhere.
 - `sw.js`: keeps a copy for using offline.
-- `test/titles.test.mjs` checks the title and date reading on real titles from the releases; `test/builder.test.mjs` checks known nights, that shows land within a minute for every length and choice with no song twice, that several times or venues mean a night in any of them, and that share links round-trip; `test/insights.test.mjs` checks the songs before their album, the pairs and runs, and the years; `test/e2e.mjs` builds, edits, keeps and reopens a show, opens a song and a night, follows songs through Before the album and What leads where, steps through the years, and checks it works offline.
+- `test/titles.test.mjs` checks the title and date reading on real titles from the releases; `test/builder.test.mjs` checks known nights, that shows land within a minute for every length and choice with no song twice, that several times or venues mean a night in any of them, and that share links round-trip; `test/insights.test.mjs` checks the songs before their album, the pairs and runs, and the years; `test/chart.test.mjs` checks how a song's chart is described in words; `test/e2e.mjs` builds, edits, keeps and reopens a show, opens a song and a night, follows songs through Before the album and What leads where, steps through the years, and checks it works offline.
