@@ -203,6 +203,8 @@ await page.tap('.tabs [data-tab="songs"]');
 await page.tap('.subnav a[href="#/before"]');
 await page.waitForSelector('.album-run .waits a');
 assert.match(await page.textContent('.before-page .headline'), /were on stage first/);
+const albumHeads = await page.$$eval('.album-run h3 small', ss => ss.map(s => s.textContent));
+assert.ok(albumHeads.every(t => !/\b1 of its \d+ songs were\b/.test(t)), `one song was, not were: ${albumHeads.filter(t => /\b1 of/.test(t))}`);
 assert.equal(await sideways(), false, 'Before the album scrolls sideways on a phone');
 await page.tap('.album-run .waits a >> text=Grey Street');
 await page.waitForSelector('.song-head h2');
