@@ -336,6 +336,18 @@ assert.ok(songsSpot > 2000, `scrolled well down the Songs (${songsSpot})`);
 await page.tap('#songs li:nth-child(60) a');
 await page.waitForSelector('.song-head');
 await backTo(songsSpot, 'Songs');
+// A song page too, and again after going Forward and Back.
+await page.goto(`${base}#/song/two-step`);
+await page.waitForSelector('.facts a[href^="#/night/"]');
+await page.$eval('.facts a[href^="#/night/"]', a => a.scrollIntoView({ block: 'center' }));
+const songSpot = await scrolled();
+assert.ok(songSpot > 500, `scrolled down Two Step (${songSpot})`);
+await page.tap('.facts a[href^="#/night/"]');
+await page.waitForSelector('.night-head');
+await backTo(songSpot, 'Two Step');
+await page.goForward();
+await page.waitForSelector('.night-head');
+await backTo(songSpot, 'Two Step after going Forward');
 await page.tap('.tabs [data-tab="nights"]');
 await page.fill('#nq', 'gorge');
 await page.tap('.night-list a >> nth=2');

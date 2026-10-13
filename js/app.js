@@ -672,7 +672,7 @@ function pick(v, scroll, hover) {
       }
     }
     document.querySelectorAll('#vlist button').forEach(b => b.setAttribute('aria-current', String(s.versions[+b.dataset.v] === v)));
-    history.replaceState(null, '', `#/song/${s.slug}/${v.date}`);
+    history.replaceState(history.state, '', `#/song/${s.slug}/${v.date}`); // keeping the spot Back comes back to
     if (scroll) document.getElementById('picked').scrollIntoView({ block: 'nearest', behavior: glide() });
   } else {
     const box = document.getElementById('chart-box');
@@ -833,7 +833,7 @@ let lastPage = null;
 addEventListener('hashchange', () => {
   const page = location.hash.replace(/^#\/?/, '').split('/').slice(0, 2).join('/');
   const was = lastPage;
-  const left = history.state; // read before the page is drawn: a song page replaces it
+  const left = history.state; // read before the page is drawn, which can rewrite the address
   route();
   if (Number.isFinite(left?.y)) {
     const nq = document.getElementById('nq');
