@@ -75,7 +75,7 @@ for (let i = 0; i < 6 && !others.length; i++) {
 }
 assert.ok(others.length > 0, 'other versions to swap in');
 await others[0].tap();
-assert.equal(await page.$('#sheet[open]'), null, 'the sheet closes after a swap');
+assert.equal(await page.$$eval('#sheet[open]', d => d.length), 0, 'the sheet closes after a swap');
 const lengths = await page.$$eval('.set .meta b', bs => bs.map(b => b.textContent));
 const sum = lengths.map(secs).reduce((a, b) => a + b, 0);
 assert.equal(secs(await page.textContent('.paper-foot .total')), sum, 'total is the sum of the songs');
