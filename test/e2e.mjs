@@ -357,6 +357,14 @@ if (twice) {
   assert.equal((await page.textContent('.flow-center small')).trim(), `On ${twice.nights} whole nights`);
 }
 
+// A song never on a night released whole has no What leads where link, since that page would have nothing for it.
+const partOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => s.prevs.length && !s.versions.some(v => v.night.whole && !v.track.extra))?.slug);
+if (partOnly) {
+  await page.goto(`${base}#/song/${partOnly}`);
+  await page.waitForSelector('.facts');
+  assert.equal(await page.$$eval('.facts a[href^="#/flow/"]', as => as.length), 0, `${partOnly}: no What leads where link`);
+}
+
 // A song only ever released on a track with another: each lineup's versions are counted, with no length to show.
 const sharedOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => !s.median)?.slug);
 if (sharedOnly) {

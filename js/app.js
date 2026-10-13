@@ -588,7 +588,8 @@ function facts(s) {
     out.push(`<li>Played on ${plural(whole, 'whole night')} released in full${bits.length ? `, and ${bits.join(' and ')}` : ''}.</li>`);
   }
   if (s.nexts.length) out.push(`<li>Most often followed by ${s.nexts.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.</li>`);
-  if (s.prevs.length) out.push(`<li>Most often after ${s.prevs.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}. <a href="#/flow/${s.slug}">What leads where</a>.</li>`);
+  // What leads where only has the nights released whole, so it has nothing for a song never on one.
+  if (s.prevs.length) out.push(`<li>Most often after ${s.prevs.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.${whole ? ` <a href="#/flow/${s.slug}">What leads where</a>.` : ''}</li>`);
   const before = beforeFact(M, s);
   if (before) out.push(`<li>${before}</li>`);
   if (s.longest && s.shortest && s.longest !== s.shortest) {
