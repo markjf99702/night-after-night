@@ -130,7 +130,6 @@ function drawFlow(M, F, center) {
   const box = document.getElementById('flow');
   if (!box) return;
   const before = F.before(center), after = F.after(center);
-  const total = F.played(center) || before.reduce((a, [, n]) => a + n, 0);
   const cap = list => {
     const top = list.slice(0, 8);
     const rest = list.slice(8).reduce((a, [, n]) => a + n, 0);
@@ -138,7 +137,7 @@ function drawFlow(M, F, center) {
   };
   const head = `<figcaption class="flow-center"><span class="kicker">${center === START ? 'Openers' : center === END ? 'Closers' : 'Following'}</span>
     <strong>${center.virtual ? esc(center.name) : songLink(center)}</strong>
-    <small>${center === START ? `How the ${plural(F.nights, 'night')} began` : center === END ? `How the ${plural(F.nights, 'night')} ended` : `On ${plural(total, 'whole night')}`}</small></figcaption>`;
+    <small>${center === START ? `How the ${plural(F.nights, 'night')} began` : center === END ? `How the ${plural(F.nights, 'night')} ended` : `On ${plural(F.nightsWith(center), 'whole night')}`}</small></figcaption>`;
   const wide = box.clientWidth >= 640;
   if (!wide) {
     // Bars are against the most common song. The others, added up, can outnumber it, so they get no bar.

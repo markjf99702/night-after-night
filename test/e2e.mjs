@@ -340,6 +340,23 @@ assert.equal(await page.inputValue('#nq'), 'gorge', 'the Nights search comes bac
 assert.ok((await page.$$eval('.night-list .v', vs => vs.map(v => v.textContent))).every(t => /gorge/i.test(t)), 'and still finds only the Gorge');
 await page.fill('#nq', '');
 
+// A song played twice on a night is on that many whole nights, on its page and on What leads where.
+const twice = await page.evaluate(() => {
+  const s = window.nightAfterNight.M.songs.find(x => {
+    const vs = x.versions.filter(v => v.night.whole && !v.track.extra);
+    return new Set(vs.map(v => v.night)).size < vs.length;
+  });
+  return s && { slug: s.slug, nights: new Set(s.versions.filter(v => v.night.whole && !v.track.extra).map(v => v.night)).size };
+});
+if (twice) {
+  await page.goto(`${base}#/song/${twice.slug}`);
+  await page.waitForSelector('.facts');
+  assert.match(await page.textContent('.facts'), new RegExp(`Played on ${twice.nights} whole nights`), `${twice.slug}: each night once`);
+  await page.goto(`${base}#/flow/${twice.slug}`);
+  await page.waitForSelector('.flow-center small');
+  assert.equal((await page.textContent('.flow-center small')).trim(), `On ${twice.nights} whole nights`);
+}
+
 // A song only ever released on a track with another: each lineup's versions are counted, with no length to show.
 const sharedOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => !s.median)?.slug);
 if (sharedOnly) {

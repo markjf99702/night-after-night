@@ -105,7 +105,7 @@ export const END = { id: 'end', slug: 'end', name: 'The end of the night', virtu
 // Which song follows which, on the nights released whole. A step counts as a segue when the two songs share a
 // track or the release marks one running into the next ("Two Step >").
 export function flow(M) {
-  const next = new Map(), prev = new Map(), segue = new Map(), runs = new Map();
+  const next = new Map(), prev = new Map(), segue = new Map(), runs = new Map(), on = new Map();
   const add = (map, a, b, n = 1) => {
     if (!map.has(a)) map.set(a, new Map());
     map.get(a).set(b, (map.get(a).get(b) || 0) + n);
@@ -124,6 +124,7 @@ export function flow(M) {
     }));
     seq.push(END);
     joined.push(false);
+    for (const s of new Set(seq)) on.set(s, (on.get(s) || 0) + 1); // a song played twice that night counts once
     for (let k = 1; k < seq.length; k++) {
       add(next, seq[k - 1], seq[k]);
       add(prev, seq[k], seq[k - 1]);
@@ -152,7 +153,7 @@ export function flow(M) {
   return {
     nights,
     after: a => out(next, a), before: a => out(prev, a),
-    played: a => total(next, a), segues: (a, b) => segue.get(a)?.get(b) || 0,
+    played: a => total(next, a), nightsWith: a => on.get(a) || 0, segues: (a, b) => segue.get(a)?.get(b) || 0,
     pairs: pairs.filter(p => p.share >= 0.3),
     runs: [...runs.values()].filter(r => r.count >= 3).sort((x, y) => y.count - x.count),
   };

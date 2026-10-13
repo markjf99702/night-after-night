@@ -17,7 +17,7 @@ Step back from one song or one night and the same recordings say more: which son
 <p align="center">
   <img src="docs/phone-before.png" alt="Busted Stuff, July 16, 2002: 9 of its 11 songs were on stage first. A line for each on a timeline from 1995 to 2020, from its earliest released live version to the album: Raven 6 years 11 months, Bartender 3 years 4 months, Grey Street and Digging a Ditch 2 years 1 month, down to Where Are You Going, 2 months" width="250">
   &nbsp;
-  <img src="docs/phone-flow.png" alt="Following Ants Marching, on 88 whole nights: what came right before it (#36 and Two Step 9 times each, Satellite 5) and right after it (the end of the night 17 times, All Along the Watchtower 5), with the straight-through segues marked in red" width="250">
+  <img src="docs/phone-flow.png" alt="Following Ants Marching, on 87 whole nights: what came right before it (#36 and Two Step 9 times each, Satellite 5) and right after it (the end of the night 17 times, All Along the Watchtower 5), with the straight-through segues marked in red" width="250">
   &nbsp;
   <img src="docs/phone-year.png" alt="2008: 13 nights released, 5 of them whole, a whole night about 2 hours 38 minutes. Who was on stage, Butch Taylor leaving, Tim Reynolds joining, LeRoi Moore's last show and Jeff Coffin taking over, then the songs played on the most nights" width="250">
 </p>

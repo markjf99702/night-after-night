@@ -580,7 +580,7 @@ function eras(s) {
 
 function facts(s) {
   const out = [];
-  const whole = s.versions.filter(v => v.night.whole && !v.track.extra).length;
+  const whole = new Set(s.versions.filter(v => v.night.whole && !v.track.extra).map(v => v.night)).size;
   if (whole) {
     const bits = [];
     if (s.opens) bits.push(`opened ${plural(s.opens, 'of them', 'of them')}`.replace(/^opened 1 of them/, 'opened one of them'));

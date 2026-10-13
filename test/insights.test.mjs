@@ -74,6 +74,18 @@ test('a song page counts the song sharing its track as what came before or after
   }
 });
 
+test('a song played twice on a night is on that night once', () => {
+  const F = flow(M);
+  assert.equal(F.nightsWith(START), F.nights);
+  assert.equal(F.nightsWith(END), F.nights);
+  for (const s of M.songs) {
+    const nights = new Set(s.versions.filter(v => v.night.whole && !v.track.extra).map(v => v.night));
+    assert.equal(F.nightsWith(s), nights.size, s.name);
+    assert.ok(F.nightsWith(s) <= F.played(s), s.name);
+  }
+  assert.ok(M.songs.some(s => F.nightsWith(s) < F.played(s)), 'some song was played twice on a whole night');
+});
+
 test('a song opened a night only as its first song, and closed one only as its last', () => {
   const F = flow(M);
   const opened = new Map(F.after(START)), closed = new Map(F.before(END));
