@@ -111,6 +111,10 @@ assert.deepEqual(await pressed('venues'), [''], 'Anywhere again');
 
 // Songs: find one and open it.
 await page.tap('.tabs [data-tab="songs"]');
+const found = typed => page.fill('#q', typed).then(() => page.$$eval('#songs .name', ns => ns.map(n => n.textContent)));
+for (const [typed, name] of [['cornbread', 'Corn Bread'], ['corn bread', 'Corn Bread'], ['rhyme and reason', 'Rhyme & Reason'], ['Rhyme & Reason', 'Rhyme & Reason'], ['dont drink', 'Don’t Drink the Water'], ['wasting time', 'Stay (Wasting Time)']]) {
+  assert.ok((await found(typed)).includes(name), `"${typed}" finds ${name}`);
+}
 await page.fill('#q', 'two step');
 await page.tap('#songs a');
 await page.waitForSelector('#chart-box svg');

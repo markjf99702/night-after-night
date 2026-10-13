@@ -446,6 +446,8 @@ const SORTS = {
   first: ['First released from the stage', (a, b) => a.first.date.localeCompare(b.first.date)],
 };
 let songState = { q: '', sort: 'versions', album: 'all' };
+// Found however it's spelled: "cornbread" finds Corn Bread, "rhyme and reason" Rhyme & Reason, "dont" Don’t.
+const searchKey = text => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f’']/g, '').replace(/&/g, 'and').replace(/[^a-z0-9#]/g, '');
 
 function renderSongs() {
   const albums = M.albums.map(a => `<option value="${a.id}">${esc(a.name)} (${a.year})</option>`).join('');
@@ -462,8 +464,8 @@ function renderSongs() {
   q.value = songState.q; sort.value = songState.sort; album.value = songState.album;
   const draw = () => {
     songState = { q: q.value, sort: sort.value, album: album.value };
-    const needle = q.value.trim().toLowerCase().replace(/[’']/g, '');
-    let list = M.songs.filter(s => !needle || s.name.toLowerCase().replace(/[’']/g, '').includes(needle));
+    const needle = searchKey(q.value);
+    let list = M.songs.filter(s => !needle || searchKey(s.name).includes(needle));
     if (album.value === 'none') list = list.filter(s => !s.albums.length && !s.cover);
     else if (album.value === 'covers') list = list.filter(s => s.cover);
     else if (album.value !== 'all') list = list.filter(s => s.albums.some(a => a.album.id === +album.value));
