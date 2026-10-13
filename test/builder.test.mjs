@@ -44,6 +44,15 @@ test('known nights and songs', () => {
   assert.equal(clock(3725), '1:02:05');
 });
 
+test('each lineup counts every version of a song, shared tracks too', () => {
+  for (const s of M.songs) {
+    assert.equal(s.eras.reduce((a, e) => a + e.count, 0), s.count, `${s.name}: every version in one lineup`);
+    assert.ok(s.eras.every(e => e.count || !e.median), `${s.name}: no length without versions`);
+  }
+  // Pantala Naga Pampa is nearly always on a track with Rapunzel, so few of its versions have a time of their own.
+  assert.ok(M.bySlug.get('pantala-naga-pampa').eras.every(e => e.count > 0), 'Pantala Naga Pampa with every lineup');
+});
+
 test('lead-ins stay attached to what they lead into', () => {
   const glue = new Map([...leadIns(M)].map(([a, b]) => [a.name, b.name]));
   assert.equal(glue.get('Pantala Naga Pampa'), 'Rapunzel');

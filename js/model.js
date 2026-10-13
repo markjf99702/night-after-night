@@ -194,9 +194,10 @@ function stats(s) {
   s.stretch = s.album?.length && s.median ? s.median / s.album.length : null;
   s.opens = s.versions.filter(v => v.opener).length;
   s.closes = s.versions.filter(v => v.closer).length;
+  // Each lineup's versions, and the typical length of those timed on their own (a shared track's time is for both).
   s.eras = ERAS.map(e => {
-    const xs = timed.filter(v => e.from <= v.date && v.date <= e.to).map(v => v.secs);
-    return { era: e, count: xs.length, median: median(xs) };
+    const inEra = v => e.from <= v.date && v.date <= e.to;
+    return { era: e, count: s.versions.filter(inEra).length, median: median(timed.filter(inEra).map(v => v.secs)) };
   });
   // What came right after it and right before it: the song it shares a track with ("Pantala Naga Pampa > Rapunzel"),
   // or else the first song of the next track and the last song of the one before.

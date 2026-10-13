@@ -545,8 +545,8 @@ function eras(s) {
   const max = Math.max(...s.eras.map(e => e.median), s.album?.length || 0, 1);
   const rows = s.eras.map(e => `<div class="era">
       <span class="t">${esc(e.era.name)}<small>${e.era.from.slice(0, 4)}${e.era.to < '2090' ? `–${e.era.to.slice(0, 4)}` : ' on'} · ${e.count ? plural(e.count, 'version') : 'none released'}</small></span>
-      <span class="m">${e.count ? clock(e.median) : '–'}</span>
-      <span class="bar">${e.count ? `<span style="width:${(e.median / max * 100).toFixed(1)}%"></span>` : ''}${s.album?.length ? `<i class="album-tick" style="left:${(s.album.length / max * 100).toFixed(1)}%" title="Album version"></i>` : ''}</span>
+      <span class="m">${e.median ? clock(e.median) : '–'}</span>
+      <span class="bar">${e.median ? `<span style="width:${(e.median / max * 100).toFixed(1)}%"></span>` : ''}${s.album?.length ? `<i class="album-tick" style="left:${(s.album.length / max * 100).toFixed(1)}%" title="Album version"></i>` : ''}</span>
     </div>`).join('');
   return rows + `<p class="muted small" style="margin:0">Typical length of the released versions${s.album?.length ? '; the dark tick is the album version' : ''}.</p>`;
 }

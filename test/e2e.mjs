@@ -199,6 +199,16 @@ assert.ok((await setYears()).every(y => y <= 2008), 'with LeRoi');
 await page.tap('#where [data-v=""]');
 await page.tap('[data-opt="when"] [data-v="any"]');
 
+// A song only ever released on a track with another: each lineup's versions are counted, with no length to show.
+const sharedOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => !s.median)?.slug);
+if (sharedOnly) {
+  await page.goto(base + '#/song/' + sharedOnly);
+  await page.waitForSelector('.eras .era');
+  const eras = await page.$$eval('.eras .era', es => es.map(e => e.textContent.replace(/\s+/g, ' ').trim()));
+  assert.ok(eras.some(t => /\d version/.test(t)), `${sharedOnly}: its versions are counted (${eras.join(' | ')})`);
+  assert.ok(eras.every(t => !/0:00/.test(t)), `${sharedOnly}: no 0:00 lengths (${eras.join(' | ')})`);
+}
+
 // Works offline once it has been opened.
 await page.goto(base);
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 }).catch(() => {});
