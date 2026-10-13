@@ -231,6 +231,16 @@ assert.deepEqual([await pressed('when'), await pressed('picks'), await pressed('
 assert.equal(await page.isChecked('#covers'), true);
 await page.evaluate(() => ['saved', 'options'].forEach(k => localStorage.removeItem('night-after-night.' + k)));
 
+// A share link cut off in the middle of a %-escape still opens the show, all but the song that was cut.
+const worcester = await page.evaluate(() => window.nightAfterNight.M.byDate.get('1998-12-08').tracks.filter(t => t.songs).slice(0, 3).map(t => `19981208~${t.songs[0].slug}`));
+for (const link of [worcester.join(',') + '%2', worcester.join('%2C') + '%2']) {
+  await page.goto(`${base}#/songs`);
+  await page.waitForSelector('#songs a');
+  await page.goto(`${base}#/show/90/${link}`);
+  await page.waitForSelector('.set .item', { timeout: 10000 });
+  assert.equal((await page.$$('.set .item')).length, 2, `the two songs before the cut: ${link}`);
+}
+
 // Back to Nights or Songs comes back to the same spot, and to what was in the Nights search; a new visit starts at the top.
 const scrolled = () => page.evaluate(() => Math.round(scrollY));
 const backTo = async (spot, what) => {

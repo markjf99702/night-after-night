@@ -779,7 +779,11 @@ function route() {
   closeSheet();
   chartState = null;
   if (page === 'show' && b) {
-    const shared = decode(M, decodeURIComponent(b));
+    // A link cut off in the middle of a %-escape (a chat app's %2C for a comma) can't be decoded whole, so decode
+    // each escape that's all there and leave the cut one, which drops only the last song.
+    let code = b;
+    try { code = decodeURIComponent(b); } catch { code = b.replace(/%([0-9a-f]{2})/gi, (m, hex) => String.fromCharCode(parseInt(hex, 16))); }
+    const shared = decode(M, code);
     if (shared.slots.length) {
       shared.minutes = +a || Math.round(shared.total / 60);
       renderBuilder(shared);
