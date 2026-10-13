@@ -79,6 +79,23 @@ assert.equal(await page.$('#sheet[open]'), null, 'the sheet closes after a swap'
 const lengths = await page.$$eval('.set .meta b', bs => bs.map(b => b.textContent));
 const sum = lengths.map(secs).reduce((a, b) => a + b, 0);
 assert.equal(secs(await page.textContent('.paper-foot .total')), sum, 'total is the sum of the songs');
+// With the keyboard, a swap leaves the focus on the song that was swapped, and taking the last song out on the one
+// before it.
+const focused = () => page.evaluate(() => document.activeElement?.closest('.set') ? +document.activeElement.dataset.i : document.activeElement?.tagName);
+const byKeys = async (i, button) => {
+  await page.focus(`.set .item >> nth=${i}`);
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#sheet[open] .others');
+  await page.focus(await button());
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#sheet[open]', { state: 'detached' });
+};
+const another = '#sheet .others button:not([aria-current])';
+await byKeys(0, async () => ((await page.$(another)) ? another : '#sheet #other-song'));
+assert.equal(await focused(), 0, 'focus stays on the swapped song');
+const last = (await page.$$('.set .item')).length - 1;
+await byKeys(last, async () => '#sheet #drop');
+assert.equal(await focused(), last - 1, 'focus moves to the song before the one taken out');
 assert.ok(before, 'had a total before');
 
 // Keep it, and it's listed; the link opens the same show.

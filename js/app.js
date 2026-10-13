@@ -410,11 +410,11 @@ function openSlot(i) {
   sheetBody.querySelector('.others [aria-current]')?.scrollIntoView({ block: 'nearest' });
   sheetBody.querySelectorAll('.others button').forEach(b => b.addEventListener('click', () => {
     slot.item = options[+b.dataset.k];
-    afterEdit();
+    afterEdit(i);
   }));
   sheetBody.querySelector('#drop').addEventListener('click', () => {
     show.slots.splice(i, 1);
-    afterEdit();
+    afterEdit(i);
   });
   sheetBody.querySelector('#other-song').addEventListener('click', () => {
     const all = pool(M, builderOptions()).filter(it => it.songs.every(s => !inShow.has(s) && !slot.item.songs.includes(s)) && it.secs >= 120);
@@ -425,14 +425,19 @@ function openSlot(i) {
     const it = list[Math.floor(Math.random() * list.length)];
     slot.item = it;
     slot.anchor = it.songs[0];
-    afterEdit();
+    afterEdit(i);
   });
 }
 
-function afterEdit() {
+function afterEdit(i) {
   show.total = show.slots.reduce((a, s) => a + s.item.secs, 0);
   closeSheet();
   renderPaper(false);
+  // The setlist is drawn afresh, so put the keyboard back on the song that changed (or the one after a song taken
+  // out), not at the top of the page.
+  const items = document.querySelectorAll('#paper .item'), paper = document.getElementById('paper');
+  if (items.length) items[Math.min(i, items.length - 1)].focus({ preventScroll: true });
+  else if (paper) { paper.tabIndex = -1; paper.focus({ preventScroll: true }); }
   // A show opened from a link or Kept shows keeps its changes in the link, so coming Back to it brings them back.
   if (location.hash.startsWith('#/show/')) history.replaceState(history.state, '', `#/show/${showMinutes}/${encode(show)}`);
 }
