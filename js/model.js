@@ -136,12 +136,12 @@ export function build(data) {
     });
     for (const t of night.tracks) {
       if (!t.songs) continue;
-      for (const s of t.songs) {
+      t.songs.forEach((s, pos) => {
         s.versions.push({
-          song: s, night, track: t, secs: t.secs, shared: t.songs.length > 1, date: night.date,
+          song: s, night, track: t, pos, secs: t.secs, shared: t.songs.length > 1, date: night.date,
           opener: night.whole && !t.extra && t.index === 0, closer: night.whole && !t.extra && t.index === main.length - 1,
         });
-      }
+      });
     }
     return night;
   });
@@ -196,13 +196,15 @@ function stats(s) {
     const xs = timed.filter(v => e.from <= v.date && v.date <= e.to).map(v => v.secs);
     return { era: e, count: xs.length, median: median(xs) };
   });
+  // What came right after it and right before it: the song it shares a track with ("Pantala Naga Pampa > Rapunzel"),
+  // or else the first song of the next track and the last song of the one before.
   const tally = key => {
     const m = new Map();
     for (const v of s.versions) {
-      const t = v.track[key];
-      if (!t || v.track.extra) continue;
-      const other = key === 'next' ? t.songs[0] : t.songs.at(-1);
-      if (other === s) continue;
+      const t = v.track;
+      if (t.extra) continue;
+      const other = key === 'next' ? t.songs[v.pos + 1] || t.next?.songs[0] : t.songs[v.pos - 1] || t.prev?.songs.at(-1);
+      if (!other || other === s) continue;
       m.set(other, (m.get(other) || 0) + 1);
     }
     return [...m].sort((a, b) => b[1] - a[1]);

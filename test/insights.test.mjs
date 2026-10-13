@@ -61,6 +61,19 @@ test('what leads where', () => {
   assert.ok(F.played(ants) > 50, 'Ants Marching is on most whole nights');
 });
 
+test('a song page counts the song sharing its track as what came before or after it', () => {
+  const F = flow(M);
+  const pnp = named('Pantala Naga Pampa'), rapunzel = named('Rapunzel');
+  assert.equal(pnp.nexts[0][0], rapunzel, 'Pantala Naga Pampa is most often followed by Rapunzel');
+  assert.equal(rapunzel.prevs[0][0], pnp, 'Rapunzel most often comes after Pantala Naga Pampa');
+  // The song page counts every release and What leads where only the whole nights, so it never has fewer.
+  for (const s of M.songs) {
+    const nexts = new Map(s.nexts), prevs = new Map(s.prevs);
+    for (const [o, n] of F.after(s)) if (!o.virtual && o !== s) assert.ok((nexts.get(o) || 0) >= n, `${s.name} then ${o.name}: ${nexts.get(o)} < ${n}`);
+    for (const [o, n] of F.before(s)) if (!o.virtual && o !== s) assert.ok((prevs.get(o) || 0) >= n, `${o.name} then ${s.name}: ${prevs.get(o)} < ${n}`);
+  }
+});
+
 test('a year on the road', () => {
   const Y = yearStats(M, 2008);
   assert.ok(Y.nights.length && Y.nights.every(n => n.year === 2008));
