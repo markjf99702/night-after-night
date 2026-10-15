@@ -5,7 +5,7 @@
   "description": "Every official Dave Matthews Band live version, and a show built from them to fit your drive.",
   "scripts": {
     "start": "npx --yes http-server -c-1 -p 8080 .",
-    "test": "node --test test/titles.test.mjs test/builder.test.mjs test/insights.test.mjs test/chart.test.mjs && node test/e2e.mjs",
+    "test": "node --test test/titles.test.mjs test/builder.test.mjs test/almanac.test.mjs test/insights.test.mjs test/chart.test.mjs && node test/e2e.mjs",
     "build": "node scripts/build.mjs",
     "data": "node tools/musicbrainz.mjs"
   },

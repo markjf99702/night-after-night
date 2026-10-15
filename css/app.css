@@ -255,6 +255,18 @@ select { padding-right: 28px; }
 .chart .dot.shared { fill: var(--bg); stroke: var(--dot); stroke-width: 1.6; fill-opacity: 1; }
 .chart .dot.mine { fill: var(--red); fill-opacity: 1; }
 .chart .ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+
+/* How often it was played: a column a year, from the DMB Almanac */
+.played-fig { margin: 22px 0 26px; }
+.played-fig figcaption p { margin: 0 0 8px; max-width: 44em; }
+.played { display: block; width: 100%; height: auto; }
+.played text { fill: var(--muted); font: 500 11.5px 'Archivo', sans-serif; font-variant-numeric: tabular-nums; }
+.played .grid { stroke: var(--line); }
+.played .base { stroke: var(--faint); }
+.played .bar { fill: var(--dot); }
+.played .none { stroke: var(--faint); }
+.played .hit { fill: transparent; }
+.played .col:hover .hit { fill: var(--accent-soft); }
 .chart .lane-label { font-weight: 650; font-size: 10.5px; }
 .chart .lane-name { pointer-events: none; }
 .chart .lane { opacity: .9; }
@@ -335,6 +347,17 @@ select { padding-right: 28px; }
 .setlist .len { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; }
 .setlist .bar { grid-column: 2 / -1; height: 5px; margin-top: 5px; background: var(--bg-3); border-radius: 3px; position: relative; overflow: hidden; }
 .setlist .bar span { position: absolute; inset: 0 auto 0 0; background: var(--dot); border-radius: 3px; }
+/* A setlist from the DMB Almanac: medley parts and teases sit inside the song before them */
+.setlist.almanac li.sub .s { padding-left: 16px; }
+.setlist.almanac li.tease { padding: 4px 0; }
+.setlist.almanac li.tease::before { content: ''; counter-increment: none; }
+.setlist.almanac li.tease .s a { font-weight: 500; }
+.setlist.almanac li.tease .s small, .setlist.almanac li .s small { display: inline; margin-left: 6px; }
+.here-dates { line-height: 1.9; }
+.here-dates a { white-space: nowrap; }
+.night-list li.released .dd { color: var(--accent); }
+.only-live { margin-top: 34px; }
+.only-live .never-list { margin-top: 10px; }
 
 /* Ways into the songs */
 .subnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }

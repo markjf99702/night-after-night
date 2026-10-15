@@ -1,5 +1,6 @@
 // What the whole record says when you step back from one song or one night: songs that were on stage before they
-// were on an album, each year on the road, and which songs lead into which. No page code, like model.js.
+// were on an album, each year on the road, and which songs lead into which. Built on every show in the DMB Almanac
+// (js/almanac.js) and the released nights (js/model.js). No page code, like model.js.
 import { median } from './model.js';
 import { LINEUP, bandOn } from './lineup.js';
 
@@ -16,15 +17,25 @@ export function gapText(days, short = false) {
   return [y && part(y, 'year'), m && part(m, 'month')].filter(Boolean).join(' ');
 }
 
-// Songs the band was playing before the album they're on came out: the earliest official live recording against
-// the album's release date. Also the songs that have never been on one of the band's studio albums.
+// The first time a song was heard live: its first show in the Almanac, the band's or one of Dave's other
+// appearances, or its earliest released version if that's somehow earlier.
+export function firstHeard(s) {
+  const show = s.firstAny, rel = s.first;
+  if (show && (!rel || show.date <= rel.date)) return { date: show.date, place: show.place, town: show.town, band: show.band };
+  if (rel) return { date: rel.date, place: rel.night.place, town: rel.night.town, band: true };
+  return null;
+}
+
+// Songs that were on stage before the album they're on came out: the first time each was played live against the
+// album's release date. Also the band's own songs that have never been on one of its studio albums.
 export function beforeAlbum(M) {
   const rows = [];
   for (const s of M.songs) {
     if (s.cover || !s.albums.length) continue;
     const album = s.albums[0].album;
-    if (s.first.date >= album.date) continue;
-    rows.push({ song: s, album, first: s.first, days: daysBetween(s.first.date, album.date) });
+    const first = firstHeard(s);
+    if (!first || first.date >= album.date) continue;
+    rows.push({ song: s, album, first, days: daysBetween(first.date, album.date) });
   }
   const albums = M.albums.map(album => ({
     album,
@@ -32,12 +43,11 @@ export function beforeAlbum(M) {
     played: M.songs.filter(s => s.albums[0]?.album === album).length,
   })).filter(g => g.rows.length);
   const never = M.songs.filter(s => !s.cover && !s.albums.length && s.count >= 2)
-    .sort((a, b) => a.first.date.localeCompare(b.first.date));
+    .sort((a, b) => firstHeard(a).date.localeCompare(firstHeard(b).date));
   const longest = rows.reduce((a, r) => (!a || r.days > a.days ? r : a), null);
   return { rows, albums, never, longest };
 }
 
-const mainSongs = night => night.tracks.filter(t => t.songs && !t.extra).flatMap(t => t.songs);
 const tally = list => {
   const m = new Map();
   for (const x of list) if (x) m.set(x, (m.get(x) || 0) + 1);
@@ -54,44 +64,58 @@ export function lineupChanges(year) {
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// One year on the road, from the nights released from it.
+// One year on the road: every show the band played (from the Almanac), and the nights released from it.
 export function yearStats(M, year) {
   const nights = M.nights.filter(n => n.year === year);
   const whole = nights.filter(n => n.whole);
   const versions = M.versions.filter(v => v.night.year === year);
-  const nightsBySong = new Map();
-  for (const v of versions) {
-    if (!nightsBySong.has(v.song)) nightsBySong.set(v.song, new Set());
-    nightsBySong.get(v.song).add(v.night);
+  const shows = M.bandShows.filter(s => s.year === year);
+  const sets = shows.filter(s => s.played.length);
+  const plays = new Map();
+  for (const sh of sets) for (const s of sh.played) plays.set(s, (plays.get(s) || 0) + 1);
+  // Back after the longest time away: the year's plays that came after the most shows without the song.
+  const returns = [];
+  for (const s of plays.keys()) {
+    s.plays.forEach((sh, k) => {
+      if (!k || sh.year !== year) return;
+      const gap = sh.k - s.plays[k - 1].k - 1;
+      if (gap >= 40) returns.push({ song: s, show: sh, gap, after: s.plays[k - 1] });
+    });
   }
+  returns.sort((a, b) => b.gap - a.gap);
   return {
-    year, nights, whole,
+    year, nights, whole, shows, sets,
     full: nights.filter(n => n.songCount >= 5),
     length: median(whole.filter(n => n.timed).map(n => n.total)),
-    songs: whole.length ? median(whole.map(n => n.songCount)) : 0,
-    most: [...nightsBySong].map(([s, set]) => [s, set.size]).sort((a, b) => b[1] - a[1] || a[0].name.localeCompare(b[0].name)),
-    openers: tally(whole.map(n => mainSongs(n)[0])),
-    closers: tally(whole.map(n => mainSongs(n).at(-1))),
-    firsts: M.songs.filter(s => s.first.night.year === year).sort((a, b) => a.first.date.localeCompare(b.first.date)),
+    songs: median(sets.map(s => s.sequence.length)),
+    most: [...plays].sort((a, b) => b[1] - a[1] || a[0].name.localeCompare(b[0].name)),
+    openers: tally(sets.map(s => s.sequence[0]?.song)),
+    closers: tally(sets.map(s => s.sequence.at(-1)?.song)),
+    debuts: M.allSongs.filter(s => s.firstPlay?.year === year).sort((a, b) => a.firstPlay.date.localeCompare(b.firstPlay.date) || a.name.localeCompare(b.name)),
+    returns: returns.slice(0, 8),
     longest: versions.filter(v => !v.shared && v.secs > 0).sort((a, b) => b.secs - a.secs).slice(0, 5),
     albums: M.albums.filter(a => a.year === year),
-    // Everyone on stage on any of the year's nights, so 2008 has LeRoi Moore and Jeff Coffin both.
-    band: LINEUP.filter(p => (nights.length ? nights.map(n => n.date) : [`${year}-07-01`]).some(d => bandOn(d).includes(p))),
+    // Everyone on stage at any of the year's shows, so 2008 has LeRoi Moore and Jeff Coffin both.
+    band: LINEUP.filter(p => (shows.length ? shows.map(n => n.date) : nights.length ? nights.map(n => n.date) : [`${year}-07-01`]).some(d => bandOn(d).includes(p))),
     changes: lineupChanges(year),
   };
 }
 
-// Every year from the first release to the last, for the chart on the Nights page.
+// The years with something to show: a show in the Almanac, or a night released from it.
+export const allYears = M => [...new Set([...M.years, ...M.shows.map(s => s.year)])].sort((a, b) => a - b);
+
+// Every year from the first show to the last, for the chart on the Nights page.
 export function years(M) {
-  const first = M.years[0], last = M.years.at(-1);
+  const ys = allYears(M);
   const out = [];
-  for (let y = first; y <= last; y++) {
+  for (let y = ys[0]; y <= ys.at(-1); y++) {
     const nights = M.nights.filter(n => n.year === y);
     const whole = nights.filter(n => n.whole);
     out.push({
       year: y,
-      full: nights.filter(n => n.songCount >= 5).length,
-      bits: nights.filter(n => n.songCount < 5).length,
+      shows: M.showYears.get(y)?.shows || 0,
+      others: M.shows.filter(s => s.year === y && !s.band).length,
+      released: nights.filter(n => n.show?.band !== false).length,
       length: median(whole.filter(n => n.timed).map(n => n.total)),
     });
   }
@@ -102,8 +126,8 @@ export function years(M) {
 export const START = { id: 'start', slug: 'start', name: 'The start of the night', virtual: true };
 export const END = { id: 'end', slug: 'end', name: 'The end of the night', virtual: true };
 
-// Which song follows which, on the nights released whole. A step counts as a segue when the two songs share a
-// track or the release marks one running into the next ("Two Step >").
+// Which song follows which at the band's shows with a setlist. A step counts as a segue when the Almanac has the
+// one song running straight into the next.
 export function flow(M) {
   const next = new Map(), prev = new Map(), segue = new Map(), runs = new Map(), on = new Map();
   const add = (map, a, b, n = 1) => {
@@ -111,19 +135,11 @@ export function flow(M) {
     map.get(a).set(b, (map.get(a).get(b) || 0) + n);
   };
   let nights = 0;
-  for (const n of M.nights) {
-    if (!n.whole) continue;
-    const main = n.tracks.filter(t => t.songs && !t.extra);
-    if (!main.length) continue;
+  for (const show of M.setShows) {
+    if (!show.sequence.length) continue;
     nights++;
-    const seq = [START];
-    const joined = [false];
-    main.forEach((t, k) => t.songs.forEach((s, i) => {
-      seq.push(s);
-      joined.push(i > 0 || (i === 0 && k > 0 && main[k - 1].segue));
-    }));
-    seq.push(END);
-    joined.push(false);
+    const seq = [START, ...show.sequence.map(x => x.song), END];
+    const joined = [false, false, ...show.sequence.slice(0, -1).map(x => x.segue), false];
     for (const s of new Set(seq)) on.set(s, (on.get(s) || 0) + 1); // a song played twice that night counts once
     for (let k = 1; k < seq.length; k++) {
       add(next, seq[k - 1], seq[k]);
@@ -132,20 +148,21 @@ export function flow(M) {
     }
     for (let k = 1; k + 2 < seq.length - 1; k++) {
       const key = [seq[k], seq[k + 1], seq[k + 2]];
-      const id = key.map(s => s.id).join('>');
+      if (new Set(key).size < 3) continue;
+      const id = key.map(s => s.slug).join('>');
       if (!runs.has(id)) runs.set(id, { songs: key, count: 0 });
       runs.get(id).count++;
     }
   }
   const out = (map, a) => [...(map.get(a) || [])].sort((x, y) => y[1] - x[1] || x[0].name.localeCompare(y[0].name));
   const total = (map, a) => [...(map.get(a) || new Map()).values()].reduce((s, n) => s + n, 0);
-  // Pairs: how often B follows A, out of every time A was played (and didn't end the night). Lead-ins come first.
+  // Pairs: how often B follows A, out of every time A was played (and didn't end the night).
   const pairs = [];
   for (const [a, bs] of next) {
     if (a.virtual) continue;
     const t = total(next, a);
     for (const [b, c] of bs) {
-      if (b.virtual || c < 4) continue;
+      if (b.virtual || b === a || c < 10) continue;
       pairs.push({ a, b, count: c, of: t, share: c / t, segues: segue.get(a)?.get(b) || 0 });
     }
   }

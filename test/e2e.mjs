@@ -358,30 +358,46 @@ assert.equal(await page.inputValue('#nq'), 'gorge', 'the Nights search comes bac
 assert.ok((await page.$$eval('.night-list .v', vs => vs.map(v => v.textContent))).every(t => /gorge/i.test(t)), 'and still finds only the Gorge');
 await page.fill('#nq', '');
 
-// A song played twice on a night is on that many whole nights, on its page and on What leads where.
+// What leads where counts a show once, even when the song was played twice that night.
 const twice = await page.evaluate(() => {
-  const s = window.nightAfterNight.M.songs.find(x => {
-    const vs = x.versions.filter(v => v.night.whole && !v.track.extra);
-    return new Set(vs.map(v => v.night)).size < vs.length;
-  });
-  return s && { slug: s.slug, nights: new Set(s.versions.filter(v => v.night.whole && !v.track.extra).map(v => v.night)).size };
+  const { M } = window.nightAfterNight;
+  const s = M.songs.find(x => M.setShows.some(sh => sh.sequence.filter(i => i.song === x).length > 1));
+  return s && { slug: s.slug, shows: M.setShows.filter(sh => sh.sequence.some(i => i.song === s)).length };
 });
 if (twice) {
-  await page.goto(`${base}#/song/${twice.slug}`);
-  await page.waitForSelector('.facts');
-  assert.match(await page.textContent('.facts'), new RegExp(`Played on ${twice.nights} whole nights`), `${twice.slug}: each night once`);
   await page.goto(`${base}#/flow/${twice.slug}`);
   await page.waitForSelector('.flow-center small');
-  assert.equal((await page.textContent('.flow-center small')).trim(), `On ${twice.nights} whole nights`);
+  assert.equal((await page.textContent('.flow-center small')).trim(), `At ${twice.shows.toLocaleString('en-US')} shows`, `${twice.slug}: each show once`);
 }
 
-// A song never on a night released whole has no What leads where link, since that page would have nothing for it.
-const partOnly = await page.evaluate(() => window.nightAfterNight.M.songs.find(s => s.prevs.length && !s.versions.some(v => v.night.whole && !v.track.extra))?.slug);
-if (partOnly) {
-  await page.goto(`${base}#/song/${partOnly}`);
-  await page.waitForSelector('.facts');
-  assert.equal(await page.$$eval('.facts a[href^="#/flow/"]', as => as.length), 0, `${partOnly}: no What leads where link`);
-}
+// Every show, from the DMB Almanac: a song's page has how often it was played, and how it began.
+await page.goto(`${base}#/song/two-step`);
+await page.waitForSelector('#played-box svg');
+assert.match(await page.textContent('.facts'), /First played Apr 5, 1992/);
+// A song the band has played but never released has a page of its own.
+await page.goto(`${base}#/song/bismarck`);
+await page.waitForSelector('#played-box svg');
+assert.match(await page.textContent('.headline'), /Played at \d+ of the band’s shows/);
+assert.ok((await page.$$('.show-list li')).length > 20, 'Bismarck lists its shows');
+assert.equal(await sideways(), false, 'a never-released song scrolls sideways on a phone');
+// A night nothing was released from has its setlist from the Almanac, and links back to it.
+await page.tap('.show-list a >> nth=0');
+await page.waitForSelector('.setlist.almanac li');
+assert.ok(await page.$('a[href^="https://dmbalmanac.com/TourShowSet.aspx?id="]'), 'the show links back to the Almanac');
+assert.ok(await page.$('.jd-foot a[href="https://dmbalmanac.com/"]'), 'the Almanac is credited on the page');
+assert.equal(await sideways(), false, 'an unreleased night scrolls sideways on a phone');
+// The first time anywhere, when that came before the band's own shows.
+await page.goto(`${base}#/song/crush`);
+await page.waitForSelector('.facts');
+assert.match(await page.textContent('.facts'), /First played Apr 18, 1998 .*outside the band’s tours; first at one of the band’s shows May 2, 1998/);
+// A song only played outside the band's tours, and one only ever heard inside another song, list where.
+await page.goto(`${base}#/song/devil-woman`);
+await page.waitForSelector('.show-list li');
+assert.match(await page.textContent('.headline'), /Played at \d+ shows outside the band’s tours/);
+await page.goto(`${base}#/song/i-want-a-new-drug`);
+await page.waitForSelector('.show-list li');
+assert.match(await page.textContent('.headline'), /Only ever heard in passing/);
+assert.match(await page.textContent('main'), /Heard in passing \(\d+\)/);
 
 // With reduced motion, the Nights year jump and picking a version go straight there instead of gliding.
 await page.emulateMedia({ reducedMotion: 'reduce' });

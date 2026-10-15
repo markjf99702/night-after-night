@@ -110,3 +110,29 @@ function summary(song) {
     + (song.median ? `, usually ${clock(song.median)} long` : '') // no typical length when every version shared a track
     + (song.album?.length ? `, against ${clock(song.album.length)} on ${song.album.album.name}` : '');
 }
+
+// How often a song was played, year by year: the share of the band's shows that year (with a setlist in the DMB
+// Almanac) that had it. A year with no shows has no column at all; a year it wasn't played, an empty one.
+export function playedChart(song, rows, { width = 700 } = {}) {
+  const W = Math.max(300, Math.round(width)), narrow = W < 520;
+  const L = narrow ? 36 : 42, R = 8, T = 8, plotH = narrow ? 76 : 88;
+  const H = T + plotH + 22;
+  const band = (W - L - R) / rows.length;
+  const y = share => T + plotH - share * plotH;
+  const most = rows.reduce((a, r) => (r.sets && (!a || r.plays / r.sets > a.plays / a.sets) ? r : a), null);
+  const label = `${song.name}: played at ${plural(song.playCount || 0, 'show')}${most?.plays ? `, most often in ${most.year} (${most.plays} of ${most.sets})` : ''}`;
+  let svg = `<svg class="played" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(label)}">`;
+  for (const p of [0.5, 1]) {
+    svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(p)}" y2="${y(p)}"/><text x="${L - 6}" y="${y(p) + 4}" text-anchor="end">${p * 100}%</text>`;
+  }
+  svg += `<line class="base" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>`;
+  rows.forEach((r, i) => {
+    const x = L + i * band, bw = Math.max(1.5, band * 0.68), bx = x + (band - bw) / 2;
+    if (r.year % 5 === 0) svg += `<text x="${x + band / 2}" y="${H - 4}" text-anchor="middle">${narrow ? `’${String(r.year).slice(2)}` : r.year}</text>`;
+    if (!r.sets) { svg += `<line class="none" x1="${x + band / 2}" x2="${x + band / 2}" y1="${y(0) - 3}" y2="${y(0) + 3}"><title>${r.year}: no shows</title></line>`; return; }
+    const share = r.plays / r.sets;
+    svg += `<g class="col"><title>${r.year}: ${r.plays ? `${r.plays} of ${plural(r.sets, 'show')}` : `none of ${plural(r.sets, 'show')}`}</title><rect class="hit" x="${x}" y="${T}" width="${band}" height="${plotH}"/>`
+      + (r.plays ? `<rect class="bar" x="${bx.toFixed(1)}" y="${y(share).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1.5, plotH * share).toFixed(1)}" rx="1"/>` : '') + '</g>';
+  });
+  return svg + '</svg>';
+}

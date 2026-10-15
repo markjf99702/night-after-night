@@ -1,12 +1,15 @@
 import DATA from './data.js';
+import SHOWS from './shows.js';
 import { build, clock, duration, dateText, story } from './model.js';
+import { attachShows, rotation } from './almanac.js';
 import { buildShow, encode, decode, encoreSize, pool, PICKS, JAMS } from './builder.js';
-import { lifeline, sparkline, endYear } from './chart.js';
+import { lifeline, sparkline, endYear, playedChart } from './chart.js';
 import { bandOn } from './lineup.js';
-import { esc, plural, venueLine, songLink, nightLink, songsNav, nightRow, atPlace, placeText } from './ui.js';
-import { renderBefore, renderFlow, renderYear, yearsChart, beforeFact } from './insight-pages.js';
+import { esc, plural, venueLine, songLink, nightLink, songsNav, nightRow, atPlace, placeText, showLink, showRow, showPlace, OUTSIDE } from './ui.js';
+import { renderBefore, renderFlow, renderYear, yearsChart, beforeFact, flowOf } from './insight-pages.js';
+import { allYears } from './insights.js';
 
-const M = build(DATA);
+const M = attachShows(build(DATA), SHOWS);
 const chartEnd = endYear(M.years); // every chart runs to the same year
 const SITE = 'https://night-after-night.junkdrawer.works/';
 const view = document.getElementById('view');
@@ -26,7 +29,7 @@ const store = {
 const first = M.nights[0].date.slice(0, 4), last = M.nights.at(-1).date.slice(0, 4);
 document.getElementById('span-years').textContent = `${first} to ${last}`;
 document.getElementById('count').textContent =
-  `${plural(M.versions.length, 'version')} of ${plural(M.songs.length, 'song')} from ${plural(M.nights.length, 'night')} on ${plural(new Set(M.nights.map(n => n.release)).size, 'official release')}.`;
+  `${plural(M.versions.length, 'version')} of ${plural(M.songs.length, 'song')} from ${plural(M.nights.length, 'night')} on ${plural(new Set(M.nights.map(n => n.release)).size, 'official release')}, and the setlists of ${plural(M.setShows.length, 'show')} from the DMB Almanac.`;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Little pieces used on every page
@@ -454,6 +457,7 @@ function afterEdit(i) {
 
 const SORTS = {
   versions: ['Most versions', (a, b) => b.count - a.count || a.name.localeCompare(b.name)],
+  played: ['Most played live', (a, b) => (b.playCount || 0) - (a.playCount || 0) || a.name.localeCompare(b.name)],
   az: ['A to Z', (a, b) => a.name.localeCompare(b.name, 'en', { numeric: true })],
   long: ['Longest on stage', (a, b) => b.median - a.median],
   grew: ['Grew the most', (a, b) => (b.stretch || 0) - (a.stretch || 0)],
@@ -473,6 +477,7 @@ function renderSongs() {
       <select id="album" aria-label="Album"><option value="all">Every song</option>${albums}<option value="none">Never on a studio album</option><option value="covers">Covers</option></select>
     </div>
     <ul class="song-list" id="songs"></ul>
+    <section class="only-live" id="only-live"></section>
   </section>`;
   const q = document.getElementById('q'), sort = document.getElementById('sort'), album = document.getElementById('album');
   q.value = songState.q; sort.value = songState.sort; album.value = songState.album;
@@ -486,11 +491,17 @@ function renderSongs() {
     if (sort.value === 'grew') list = list.filter(s => s.stretch && s.count >= 3);
     list.sort(SORTS[sort.value][1]);
     document.getElementById('songs').innerHTML = list.length ? list.map(s => {
-      const sub = [plural(s.count, 'version'), s.first.date.slice(0, 4) === s.last.date.slice(0, 4) ? s.first.date.slice(0, 4) : `${s.first.date.slice(0, 4)}–${s.last.date.slice(0, 4)}`,
+      const sub = [s.playCount ? `${plural(s.playCount, 'show')}, ${s.count} released` : plural(s.count, 'version'),
         s.cover ? 'cover' : s.album ? esc(s.album.album.name) : ''].filter(Boolean).join(' · ');
       const right = sort.value === 'grew' && s.stretch ? `${s.stretch.toFixed(1)}×<small>the album</small>` : s.median ? `${clock(s.median)}<small>usually</small>` : '';
       return `<li><a href="#/song/${s.slug}"><span><span class="name">${esc(s.name)}</span><span class="sub">${sub}</span></span>${sparkline(s, chartEnd)}<span class="med">${right}</span></a></li>`;
     }).join('') : '<li class="empty-note">No songs match.</li>';
+    // Songs the band has played but never released from the stage, from the Almanac: a short list, most played first.
+    const only = album.value === 'all' ? M.extraSongs.filter(s => s.playCount && (!needle || searchKey(s.name).includes(needle)))
+      .sort((a, b) => b.playCount - a.playCount || a.name.localeCompare(b.name)) : [];
+    document.getElementById('only-live').innerHTML = only.length ? `<h3 class="section-title">Played live, never released (${only.length})</h3>
+      <p class="muted small">Songs in the band’s setlists with no official live recording: covers, one-offs and a few of the band’s own.</p>
+      <ul class="never-list">${only.map(s => `<li><a href="#/song/${s.slug}"><span>${esc(s.name)}</span><small>${plural(s.playCount, 'show')}</small></a></li>`).join('')}</ul>` : '';
   };
   q.addEventListener('input', draw);
   sort.addEventListener('change', draw);
@@ -506,6 +517,7 @@ let chartState = null;
 function renderSong(slug, date) {
   const s = M.bySlug.get(slug);
   if (!s) { view.innerHTML = '<p class="empty-note">There’s no song by that name here. <a href="#/songs">All the songs</a></p>'; return; }
+  if (s.almanacOnly) { renderLiveOnly(s); return; }
   const timed = s.versions.filter(v => v.secs > 0);
   const selected = (date && s.versions.find(v => v.date === date)) || s.longest || s.versions.at(-1);
   const from = s.cover ? `A cover${s.cover.length ? `, written by ${esc(joinNames(s.cover))}` : ''}.`
@@ -523,6 +535,7 @@ function renderSong(slug, date) {
       </figcaption>
     </figure>
     <div class="picked" id="picked"></div>
+    ${playedFigure(s)}
     <div class="cols">
       <section class="eras"><h3 class="section-title">How long, band by band</h3>${eras(s)}</section>
       <section><h3 class="section-title">In the show</h3><ul class="facts">${facts(s)}</ul></section>
@@ -543,6 +556,7 @@ function renderSong(slug, date) {
     document.querySelectorAll('#vlist button').forEach(b => b.setAttribute('aria-current', String(s.versions[+b.dataset.v] === chartState.selected)));
   };
   drawChart();
+  drawPlayed();
   drawList();
   pick(selected, false);
   document.getElementById('vlist').addEventListener('click', e => {
@@ -561,9 +575,54 @@ function renderSong(slug, date) {
 
 const joinNames = names => names.length > 2 ? `${names.slice(0, 2).join(', ')} and others` : names.join(' and ');
 
+// A song with no official live recording: just its life in the setlists. Played at the band's shows, only outside
+// the band's tours, or only ever heard in passing inside another song.
+function renderLiveOnly(s) {
+  const years = list => (list[0].year === list.at(-1).year ? `in ${list[0].year}` : `from ${list[0].year} to ${list.at(-1).year}`);
+  const headline = s.playCount ? `Played at ${s.playCount === 1 ? 'one of the band’s shows' : `${s.playCount.toLocaleString('en-US')} of the band’s shows`}, ${years(s.plays)}.`
+    : s.otherPlays ? `Played at ${plural(s.otherPlays, 'show')} outside the band’s tours, ${years(s.otherShows)}.`
+    : `Only ever heard in passing: a few bars of it inside another song, at ${plural(s.inPassing.length, 'show')}.`;
+  const list = (title, shows, note = '') => (shows.length ? `<section class="versions"><h3 class="section-title">${title} (${shows.length.toLocaleString('en-US')})</h3>${note}
+      <ul class="night-list show-list">${shows.map(sh => showRow(sh, true)).join('')}</ul></section>` : '');
+  const known = facts(s);
+  view.innerHTML = `<article class="song">
+    <a class="back" href="#/songs">← Songs</a>
+    <header class="song-head"><h2>${esc(s.name)}</h2><p class="from">No official live recording of it has been released.</p></header>
+    <p class="headline">${headline}</p>
+    ${playedFigure(s)}
+    ${known ? `<section><h3 class="section-title">In the show</h3><ul class="facts">${known}</ul></section>` : ''}
+    ${list(s.otherShows.length || s.inPassing.length ? 'The band’s shows' : 'Every show', s.plays)}
+    ${list('Outside the band’s tours', s.otherShows, `<p class="muted small" style="margin:0 0 8px">Shows the DMB Almanac files outside the band’s tours: ${OUTSIDE}.</p>`)}
+    ${list('Heard in passing', s.inPassing, '<p class="muted small" style="margin:0 0 8px">A tease, or a bit of it played inside another song.</p>')}
+  </article>`;
+  chartState = { song: s };
+  drawPlayed();
+}
+
+// The chart of how often it was played, filled in by drawPlayed once the page knows how wide it is.
+function playedFigure(s) {
+  if (!s.playCount) return '';
+  return `<figure class="played-fig">
+    <figcaption><h3 class="section-title">How often it was played</h3>
+      <p class="muted small">The share of each year’s shows with it in the setlist. ${playedLine(s)}</p></figcaption>
+    <div id="played-box"></div>
+  </figure>`;
+}
+
+function playedLine(s) {
+  const rows = rotation(M, s).filter(r => r.sets);
+  const top = rows.reduce((a, r) => (!a || r.plays / r.sets > a.plays / a.sets ? r : a), null);
+  return top?.plays ? `Most often in ${top.year}, at ${top.plays} of ${plural(top.sets, 'show')}.` : '';
+}
+
+function drawPlayed() {
+  const box = document.getElementById('played-box');
+  if (box && chartState?.song) box.innerHTML = playedChart(chartState.song, rotation(M, chartState.song), { width: box.clientWidth });
+}
+
 function headline(s) {
   const span = `${s.first.date.slice(0, 4)}${s.last.date.slice(0, 4) !== s.first.date.slice(0, 4) ? ` to ${s.last.date.slice(0, 4)}` : ''}`;
-  let text = `${plural(s.count, 'official live version')} from ${span}.`;
+  let text = `${s.playCount ? `Played at ${plural(s.playCount, 'show')} since ${s.firstPlay.year}, with ` : ''}${plural(s.count, 'official live version')} from ${span}.`;
   if (s.median && s.album?.length) {
     const r = s.median / s.album.length;
     const how = r >= 1.85 ? `about ${r >= 2.75 ? Math.round(r) + ' times' : r >= 2.25 ? 'two and a half times' : 'twice'} as long as the album`
@@ -587,23 +646,32 @@ function eras(s) {
 
 function facts(s) {
   const out = [];
-  const whole = new Set(s.versions.filter(v => v.night.whole && !v.track.extra).map(v => v.night)).size;
-  if (whole) {
-    const bits = [];
-    if (s.opens) bits.push(`opened ${plural(s.opens, 'of them', 'of them')}`.replace(/^opened 1 of them/, 'opened one of them'));
-    if (s.closes) bits.push(`closed ${s.closes === 1 ? 'one' : s.closes}`);
-    out.push(`<li>Played on ${plural(whole, 'whole night')} released in full${bits.length ? `, and ${bits.join(' and ')}` : ''}.</li>`);
+  if (s.playCount) {
+    const ends = [];
+    if (s.showOpens) ends.push(`opened ${s.showOpens === 1 ? 'one' : s.showOpens.toLocaleString('en-US')}`);
+    if (s.showCloses) ends.push(`closed ${s.showCloses === 1 ? 'one' : s.showCloses.toLocaleString('en-US')}`);
+    // The first time anywhere, if that came before the band's own shows (Dave & Tim, an album preview, the radio).
+    const early = s.firstAny && s.firstAny.date < s.firstPlay.date ? s.firstAny : null;
+    const first = early ? `${showLink(early)} at ${esc(showPlace(early))}, outside the band’s tours; first at one of the band’s shows ${showLink(s.firstPlay)}`
+      : `${showLink(s.firstPlay)} at ${esc(showPlace(s.firstPlay))}`;
+    out.push(`<li>First played ${first}${s.lastPlay !== s.firstPlay ? `${early ? ', and' : ';'} most recently ${showLink(s.lastPlay)}` : ''}.${ends.length ? ` It ${ends.join(' and ')} of the band’s shows.` : ''}</li>`);
+    if (s.gap?.shows >= 10) out.push(`<li>The longest it went unplayed: ${plural(s.gap.shows, 'show')}, between ${showLink(s.gap.from)} and ${showLink(s.gap.to)}.</li>`);
+    if (s.since >= 30) out.push(`<li>Not played in the band’s last ${plural(s.since, 'show')}, since ${showLink(s.lastPlay)}.</li>`);
   }
-  if (s.nexts.length) out.push(`<li>Most often followed by ${s.nexts.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.</li>`);
-  // What leads where only has the nights released whole, so it has nothing for a song never on one.
-  if (s.prevs.length) out.push(`<li>Most often after ${s.prevs.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.${whole ? ` <a href="#/flow/${s.slug}">What leads where</a>.` : ''}</li>`);
-  const before = beforeFact(M, s);
-  if (before) out.push(`<li>${before}</li>`);
+  // A song only ever played outside the band's tours says so at the top of its page instead.
+  if (s.otherPlays && (s.playCount || !s.almanacOnly)) out.push(`<li>Also played at ${plural(s.otherPlays, 'show')} outside the band’s tours: ${OUTSIDE}.</li>`);
+  // What came right before and after it, at every show with a setlist.
+  const F = flowOf(M);
+  const after = F.after(s).filter(([o]) => !o.virtual), before = F.before(s).filter(([o]) => !o.virtual);
+  if (after.length) out.push(`<li>Most often followed by ${after.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}.</li>`);
+  if (before.length) out.push(`<li>Most often after ${before.slice(0, 3).map(([o, n]) => `${songLink(o)} (${n})`).join(', ')}. <a href="#/flow/${s.slug}">What leads where</a>.</li>`);
+  const beforeAlbumFact = beforeFact(M, s);
+  if (beforeAlbumFact) out.push(`<li>${beforeAlbumFact}</li>`);
   if (s.longest && s.shortest && s.longest !== s.shortest) {
-    out.push(`<li>Longest: ${clock(s.longest.secs)}, ${nightLink(s.longest.night)} ${esc(atPlace(s.longest.night))}. Shortest: ${clock(s.shortest.secs)}, ${nightLink(s.shortest.night)}.</li>`);
+    out.push(`<li>Longest released: ${clock(s.longest.secs)}, ${nightLink(s.longest.night)} ${esc(atPlace(s.longest.night))}. Shortest: ${clock(s.shortest.secs)}, ${nightLink(s.shortest.night)}.</li>`);
   }
-  if (s.bits.length) out.push(`<li>Bits of other songs heard inside it: ${s.bits.slice(0, 6).map(([b, n]) => `${esc(b)}${n > 1 ? ` (${n})` : ''}`).join(', ')}.</li>`);
-  out.push(`<li>First released from ${nightLink(s.first.night)}, ${esc(s.first.night.noVenue ? placeText(s.first.night) : venueLine(s.first.night))}; the latest from ${nightLink(s.last.night)}.</li>`);
+  if (s.bits?.length) out.push(`<li>Bits of other songs heard inside it: ${s.bits.slice(0, 6).map(([b, n]) => `${esc(b)}${n > 1 ? ` (${n})` : ''}`).join(', ')}.</li>`);
+  if (s.first) out.push(`<li>First released from ${nightLink(s.first.night)}, ${esc(s.first.night.noVenue ? placeText(s.first.night) : venueLine(s.first.night))}; the latest from ${nightLink(s.last.night)}.</li>`);
   return out.join('');
 }
 
@@ -685,7 +753,7 @@ function pick(v, scroll, hover) {
 let resizeTimer;
 addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (document.getElementById('chart-box')) drawChart(); drawYears(); }, 120);
+  resizeTimer = setTimeout(() => { if (document.getElementById('chart-box')) drawChart(); drawPlayed(); drawYears(); }, 120);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -694,15 +762,15 @@ addEventListener('resize', () => {
 let newestFirst = store.get('newest', false);
 
 function renderNights() {
-  const years = [...M.years];
+  const years = allYears(M);
   if (newestFirst) years.reverse();
   view.innerHTML = `<section class="nights-page">
     <figure class="years-chart">
-      <figcaption><h2 class="section-title">The years</h2><p class="muted small">How many nights were released from each year (the pale part is nights with only a song or two out), and how long a whole night ran. Tap a year for its page.</p></figcaption>
+      <figcaption><h2 class="section-title">The years</h2><p class="muted small">How many shows the band played each year (the dark part has an official release), and how long a whole night released from it ran. Tap a year for every show.</p></figcaption>
       <div id="years-box"></div>
     </figure>
     <div class="list-tools">
-      <input type="search" id="nq" placeholder="Find a venue or town" aria-label="Find a venue or town" autocomplete="off">
+      <input type="search" id="nq" placeholder="Find a venue, town or date" aria-label="Find a venue, town or date" autocomplete="off">
       <button type="button" class="chip" id="order-btn">${newestFirst ? 'Newest first' : 'Oldest first'}</button>
     </div>
     <nav class="year-jump" aria-label="Years">${years.map(y => `<a href="#/nights" data-year="${y}">${y}</a>`).join('')}</nav>
@@ -711,17 +779,30 @@ function renderNights() {
   const nq = document.getElementById('nq');
   const draw = () => {
     const needle = nq.value.trim().toLowerCase();
+    // Three letters or more look through every show in the Almanac; fewer, just the released nights.
+    const everyShow = needle.length >= 3;
     const match = n => !needle || `${n.place} ${n.town} ${n.venue?.name || ''} ${n.release.label} ${n.date}`.toLowerCase().includes(needle);
+    const matchShow = sh => `${sh.place} ${sh.night?.place || ''} ${sh.town} ${sh.date} ${sh.night?.release.label || ''}`.toLowerCase().includes(needle);
     document.getElementById('years-list').innerHTML = years.map(y => {
+      const played = M.showYears.get(y)?.shows || 0;
+      if (everyShow) {
+        const found = M.shows.filter(sh => sh.year === y && matchShow(sh));
+        if (newestFirst) found.reverse();
+        if (!found.length) return '';
+        return `<section class="year" id="y${y}"><h3><a href="#/year/${y}">${y}</a> <small>${plural(found.length, 'show')}</small><a class="year-more" href="#/year/${y}">The year →</a></h3>
+          <ul class="night-list">${found.map(sh => showRow(sh)).join('')}</ul></section>`;
+      }
       const nights = M.nights.filter(n => n.year === y && match(n));
       if (newestFirst) nights.reverse();
       const full = nights.filter(n => n.songCount >= 5), small = nights.filter(n => n.songCount < 5);
-      if (!nights.length) return '';
-      return `<section class="year" id="y${y}"><h3><a href="#/year/${y}">${y}</a> <small>${plural(full.length, 'night')}${small.length ? `, plus ${plural(small.length, 'night')} with a song or two` : ''}</small><a class="year-more" href="#/year/${y}">The year →</a></h3>
-        <ul class="night-list">${full.map(nightRow).join('')}</ul>
+      if (needle && !nights.length) return '';
+      const counts = [played && plural(played, 'show'), full.length ? `${full.length} released` : !small.length && 'nothing released',
+        small.length && `${small.length} more with a song or two out`].filter(Boolean).join(', ');
+      return `<section class="year" id="y${y}"><h3><a href="#/year/${y}">${y}</a> <small>${counts}</small><a class="year-more" href="#/year/${y}">${played ? 'Every show →' : 'The year →'}</a></h3>
+        ${full.length ? `<ul class="night-list">${full.map(nightRow).join('')}</ul>` : ''}
         ${small.length ? `<p class="bits">Also: ${small.map(n => `${nightLink(n, dateText(n.date, 'year'))} (${n.tracks.filter(t => t.songs).flatMap(t => t.songs).map(s => esc(s.name)).join(', ')})`).join('; ')}.</p>` : ''}
       </section>`;
-    }).join('') || '<p class="empty-note">No nights match.</p>';
+    }).join('') || `<p class="empty-note">No ${everyShow ? 'shows' : 'nights'} match.</p>`;
   };
   drawYears();
   nq.addEventListener('input', draw);
@@ -742,12 +823,19 @@ function drawYears() {
 
 function renderNight(date) {
   const n = M.byDate.get(date);
-  if (!n) { view.innerHTML = '<p class="empty-note">No official release from that night here. <a href="#/nights">All the nights</a></p>'; return; }
-  const main = n.tracks.filter(t => !t.extra);
-  const extra = n.tracks.filter(t => t.extra);
-  const max = Math.max(...n.tracks.map(t => t.secs), 600);
+  const shows = M.showsByDate.get(date) || [];
+  if (!n && !shows.length) { view.innerHTML = '<p class="empty-note">No show from that night here. <a href="#/nights">All the nights</a></p>'; return; }
+  // The show the release came from, or the band's show that day, or whatever Dave played that day.
+  const gig = n ? n.show : shows.find(x => x.band) || shows[0];
+  const rest = shows.filter(x => x !== gig);
+  const year = +date.slice(0, 4);
+  const outside = gig && !gig.band;
   const band = bandOn(date).map(p => p.name);
-  const others = n.venue ? n.venue.nights.filter(x => x !== n && x.songCount >= 1) : [];
+  const main = n ? n.tracks.filter(t => !t.extra) : [];
+  const extra = n ? n.tracks.filter(t => t.extra) : [];
+  const max = Math.max(...(n ? n.tracks.map(t => t.secs) : [0]), 600);
+  const fromAlmanac = gig?.items.length && (!n || !n.whole);
+  const songs = fromAlmanac ? `${plural(gig.sequence.length, 'song')}${n ? `, ${n.songCount} released` : ''}` : n ? plural(n.songCount, 'song') : '';
   const row = t => {
     if (!t.songs) {
       if (/encore/i.test(t.other)) return `<li class="encore"><span>Encore</span></li>`;
@@ -757,23 +845,33 @@ function renderNight(date) {
       <span class="len">${t.secs ? clock(t.secs) : '–'}</span>
       <span class="bar"><span style="width:${(t.secs / max * 100).toFixed(1)}%"></span></span></li>`;
   };
+  const here = gig ? gig.venue.shows.filter(x => x !== gig && x.band && x.date !== date) : [];
+  const others = n?.venue ? n.venue.nights.filter(x => x !== n && x.songCount >= 1) : [];
   view.innerHTML = `<article class="night">
     <a class="back" href="#/nights">← Nights</a>
     <header class="night-head">
-      <p class="kicker">${esc(dateText(date, 'long').replace(/\d{4}$/, ''))}<a href="#/year/${n.year}">${n.year}</a></p>
-      <h2>${esc(n.place)}</h2>
-      <p class="where">${esc(n.town || 'Venue not listed')} · ${esc(n.release.label)} · ${plural(n.songCount, 'song')}${n.timed && n.total ? ` · ${clock(n.total)}` : ''}</p>
-      <p class="band">On stage: ${esc(band.slice(0, -1).join(', '))} and ${esc(band.at(-1))}.</p>
+      <p class="kicker">${esc(dateText(date, 'long').replace(/\d{4}$/, ''))}<a href="#/year/${year}">${year}</a></p>
+      <h2>${esc(n ? n.place : gig.place || 'Venue unknown')}</h2>
+      <p class="where">${[esc((n ? n.town : gig.town) || 'Town not listed'), n && esc(n.release.label), songs, n?.whole && n.timed && n.total && clock(n.total)].filter(Boolean).join(' · ')}</p>
+      ${outside ? `<p class="band">Not counted with the band’s shows here: the DMB Almanac files it outside the band’s tours, with ${OUTSIDE}.</p>`
+        : `<p class="band">On stage: ${esc(band.slice(0, -1).join(', '))} and ${esc(band.at(-1))}.</p>`}
     </header>
-    ${!n.whole && n.songCount >= 5 ? '<p class="muted small" style="margin:14px 0 0">Not every song from this night was released, so this isn’t the whole setlist.</p>' : ''}
-    ${n.songCount < 5 ? '<p class="muted small" style="margin:14px 0 0">Only part of this night has been released, on a compilation.</p>' : ''}
-    <ol class="setlist">${main.map(row).join('')}</ol>
+    ${fromAlmanac ? `<p class="muted small" style="margin:14px 0 0">${n ? `The whole night, from the DMB Almanac. The songs with a length were released on ${esc(n.release.label)}.` : gig.band ? 'Nothing from this night has been officially released. The setlist is from the DMB Almanac.' : 'The setlist is from the DMB Almanac.'}</p>${almanacSetlist(gig, n)}`
+      : n ? `${!n.whole && n.songCount >= 5 ? '<p class="muted small" style="margin:14px 0 0">Not every song from this night was released, so this isn’t the whole setlist.</p>' : ''}
+        ${n.songCount < 5 ? '<p class="muted small" style="margin:14px 0 0">Only part of this night has been released, on a compilation.</p>' : ''}
+        <ol class="setlist">${main.map(row).join('')}</ol>`
+      : '<p class="muted small" style="margin:14px 0 0">The DMB Almanac has the date and the place, but not what was played.</p>'}
     ${extra.length ? `<h3 class="section-title" style="margin-top:28px">Also released from this night</h3><ol class="setlist">${extra.map(row).join('')}</ol>` : ''}
     <div class="row" style="margin-top:24px">
-      ${n.venue && n.venue.nights.length > 1 ? `<button type="button" class="btn primary" id="from-here">Build a show from ${esc(n.venue.name)}</button>` : ''}
-      <a class="btn" href="https://musicbrainz.org/release-group/${n.release.mb}" target="_blank" rel="noopener">The release on MusicBrainz</a>
+      ${n?.venue && n.venue.nights.length > 1 ? `<button type="button" class="btn primary" id="from-here">Build a show from ${esc(n.venue.name)}</button>` : ''}
+      ${gig ? `<a class="btn" href="${gig.url}" target="_blank" rel="noopener">This show on the DMB Almanac</a>` : ''}
+      ${n ? `<a class="btn" href="https://musicbrainz.org/release-group/${n.release.mb}" target="_blank" rel="noopener">The release on MusicBrainz</a>` : ''}
     </div>
-    ${others.length ? `<section style="margin-top:28px"><h3 class="section-title">Other nights here</h3><p>${others.map(x => nightLink(x, dateText(x.date))).join(' · ')}</p></section>` : ''}
+    ${rest.map(x => `<section class="also-day" style="margin-top:30px"><h3 class="section-title">Also that day: ${esc(showPlace(x))}</h3>
+      <p class="muted small" style="margin:0">${x.band ? 'Another show by the band.' : 'Filed outside the band’s tours.'} <a href="${x.url}" target="_blank" rel="noopener">On the DMB Almanac</a></p>
+      ${x.items.length ? almanacSetlist(x, x.night) : '<p class="muted small">No setlist.</p>'}</section>`).join('')}
+    ${others.length ? `<section style="margin-top:28px"><h3 class="section-title">Other released nights here</h3><p>${others.map(x => nightLink(x, dateText(x.date))).join(' · ')}</p></section>` : ''}
+    ${here.length ? `<section style="margin-top:28px"><h3 class="section-title">The band here (${plural(here.length + (gig.band ? 1 : 0), 'show')})</h3><p class="here-dates">${here.map(x => showLink(x)).join(' · ')}</p></section>` : ''}
   </article>`;
   document.getElementById('from-here')?.addEventListener('click', () => {
     opts.venues = [venueKey(n.venue)];
@@ -782,6 +880,22 @@ function renderNight(date) {
     show = null;
     location.hash = '#/';
   });
+}
+
+// A setlist from the DMB Almanac: every song in order, with the ones that ran straight into the next, a few notes of
+// one inside another ("tease"), part of a song, a reprise, and the jams and solos between. Songs released from the
+// night get their length.
+function almanacSetlist(sh, night) {
+  const lens = new Map();
+  if (night) for (const t of night.tracks) if (t.songs && !t.extra && t.songs.length === 1 && t.secs > 0) lens.set(t.songs[0], t.secs);
+  const max = Math.max(...lens.values(), 600);
+  const TAGS = { T: 'a tease', P: 'part of it', R: 'a reprise' };
+  return `<ol class="setlist almanac">${sh.items.map(x => {
+    const secs = x.song && !x.tag ? lens.get(x.song) : null;
+    const cls = [x.sub && 'sub', !x.song && 'other', x.tag === 'T' && 'tease'].filter(Boolean).join(' ');
+    return `<li${cls ? ` class="${cls}"` : ''}><span class="s">${x.song ? songLink(x.song) : esc(x.other)}${x.segue ? '<span class="seg">&gt;</span>' : ''}${TAGS[x.tag] ? `<small>${TAGS[x.tag]}</small>` : ''}</span>
+      <span class="len">${secs ? clock(secs) : ''}</span>${secs ? `<span class="bar"><span style="width:${(secs / max * 100).toFixed(1)}%"></span></span>` : ''}</li>`;
+  }).join('')}</ol>`;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -816,7 +930,7 @@ function route() {
   else if (page === 'year') renderYear(view, M, a);
   else renderBuilder();
   const titles = {
-    song: M.bySlug.get(a)?.name, night: M.byDate.get(a) && dateText(a), year: M.years.includes(+a) && a,
+    song: M.bySlug.get(a)?.name, night: (M.byDate.get(a) || M.showsByDate.get(a)) && dateText(a), year: allYears(M).includes(+a) && a,
     before: 'Before the album', flow: 'What leads where',
   };
   document.title = titles[page] ? `${titles[page]} · Night After Night` : 'Night After Night';
