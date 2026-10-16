@@ -534,7 +534,7 @@ select { padding-right: 28px; }
   .order h2 { display: none; }
   .order .hint { order: 0; margin-bottom: 14px; }
   .order .f-time { order: 1; margin-bottom: 0; }
-  .stage { order: 2; margin-bottom: 18px; }
+  .stage { order: 2; margin-bottom: 18px; align-self: stretch; }
   .order .f-more { order: 3; }
   .order .go { display: none; }
   .paper-wrap { scroll-margin-top: 64px; }

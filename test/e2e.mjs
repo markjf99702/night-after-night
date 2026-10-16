@@ -186,17 +186,20 @@ await page.tap('#where [data-v=""]');
 assert.deepEqual(await pressed('venues'), [''], 'Anywhere again');
 
 // Take every song out and the paper says so in its own words, not that nothing fits; Copy, Share and Keep are put
-// away while the paper's empty, and when the choices find nothing too.
+// away while the paper's empty, and when the choices find nothing too. The paper stays as wide as a written one.
 const putAway = () => page.$$eval('#copy, #share, #save', bs => bs.map(b => b.hidden));
+const paperWidth = () => page.$eval('#paper', p => p.offsetWidth);
 await page.tap('[data-opt="minutes"] [data-v="30"]');
 await page.waitForSelector('.set .item');
 assert.deepEqual(await putAway(), [false, false, false], 'Copy, Share and Keep with a show on the paper');
+const writtenWidth = await paperWidth();
 while (await page.$('.set .item')) {
   await page.tap('.set .item >> nth=0');
   await page.tap('#sheet[open] #drop');
 }
 assert.match(await page.textContent('#paper'), /Every song’s out\. Write another\./);
 assert.doesNotMatch(await page.textContent('#paper'), /fit all of that/, 'no choice changed');
+assert.equal(await paperWidth(), writtenWidth, 'the emptied paper is as wide as a written one');
 assert.deepEqual(await putAway(), [true, true, true], 'nothing to copy, share or keep');
 await page.tap('#again2');
 await page.waitForSelector('.set .item');
