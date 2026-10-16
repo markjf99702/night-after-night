@@ -349,6 +349,18 @@ assert.deepEqual(await page.$$eval('#where [aria-pressed="true"]', cs => cs.map(
 assert.ok((await setYears()).every(y => y <= 2008), 'with LeRoi');
 await page.tap('#where [data-v=""]');
 await page.tap('[data-opt="when"] [data-v="any"]');
+// That venue was saved by its place in the list as it was then, before Grand Casino Arena joined Xcel Energy Center
+// higher up; the venues that could be picked after it still come back as themselves.
+for (const [place, name] of [['143', 'BankNH Pavilion'], ['144', 'Huntington Bank Pavilion at Northerly Island'], ['145', 'Fiddler’s Green Amphitheatre']]) {
+  await page.evaluate(p => {
+    localStorage.setItem('night-after-night.options', JSON.stringify({ minutes: 60, when: 'any', venue: p, picks: 'mix', jams: 'any', covers: true }));
+    localStorage.removeItem('night-after-night.current');
+  }, place);
+  await page.reload();
+  await page.waitForSelector('.set .item');
+  assert.deepEqual(await page.$$eval('#where [aria-pressed="true"]', cs => cs.map(c => c.firstChild.textContent)), [name], `place ${place}`);
+}
+await page.tap('#where [data-v=""]');
 
 // Junk in storage doesn't stop the page: a kept-shows list that isn't one, or choices that aren't on the page.
 const stored = key => page.evaluate(k => JSON.parse(localStorage.getItem('night-after-night.' + k)), key);

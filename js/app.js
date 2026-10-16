@@ -157,8 +157,11 @@ function readOptions() {
   o.when = [].concat(o.when).filter(k => k !== 'any' && own(WHEN, k));
   if (!o.when.length) o.when = ['any'];
   if ('venue' in o) {
+    // The one venue is named by its place in the list as it was then. Grand Casino Arena has since joined Xcel Energy
+    // Center, higher up the list, so the three after it that could be picked moved up a place.
+    const moved = { 143: 'BankNH Pavilion|Gilford, NH', 144: 'Huntington Bank Pavilion at Northerly Island|Chicago, IL', 145: 'Fiddler’s Green Amphitheatre|Greenwood Village, CO' };
     const v = o.venue === '' ? null : M.venues[+o.venue];
-    o.venues = v ? [venueKey(v)] : [];
+    o.venues = own(moved, o.venue) ? [moved[o.venue]] : v ? [venueKey(v)] : [];
     delete o.venue;
   }
   o.venues = [].concat(o.venues).filter(k => venueByKey.has(k));
