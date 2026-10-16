@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, COVERS, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, VENUE_NAMES, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
+import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, COVERS, BIT_NAMES, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, VENUE_NAMES, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(root, '.cache/musicbrainz');
@@ -147,7 +147,8 @@ function songsOf(rec, trackTitle) {
   named.sort((a, b) => a.at - b.at);
   // "All Along the Watchtower (intro) > All Along the Watchtower" is one song.
   for (let i = named.length - 1; i > 0; i--) if (songKey(named[i].title) === songKey(named[i - 1].title)) named.splice(i, 1);
-  return { named, bits: others.filter(x => x.partial).map(x => x.title), withs: others.filter(x => !x.partial).map(x => x.title) };
+  const called = x => BIT_NAMES[x.title] || x.title; // "Brahms' Lullaby", not "5 Lieder, op. 49: Nr. 4. Wiegenlied"
+  return { named, bits: others.filter(x => x.partial).map(called), withs: others.filter(x => !x.partial).map(called) };
 }
 
 

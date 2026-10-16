@@ -45,6 +45,16 @@ export const COVERS = {
   weight: ['Robbie Robertson'],
 };
 
+// What a few bits of other songs heard inside a track are usually called, where MusicBrainz has the piece under its
+// original title. Keyed by that title.
+export const BIT_NAMES = {
+  '5 Lieder, op. 49: Nr. 4. Wiegenlied': 'Brahms’ Lullaby',
+  'Vjezd gladiátorů, op. 68': 'Entrance of the Gladiators',
+  'Il buono, il brutto, il cattivo': 'The Good, the Bad and the Ugly',
+  'Also sprach Zarathustra: Introduction (Sunrise)': 'Also sprach Zarathustra',
+  'Carol of the Drum': 'The Little Drummer Boy',
+};
+
 // Tracks that aren't songs: intros, jams between songs, solos, the encore break, talking.
 export const NOT_A_SONG = /^(?:\[.*\]|.*\bintro(?:duction)?s?\b.*|.*\bjams?\b.*|.*\bsolos?\b.*|.*\bduet\b.*|.*\bencore\b.*|.*\bimprov\b.*|.*\bfake\b.*|.*\bsoundcheck\b.*|.*\bbanter\b.*|.*\btuning\b.*|.*\binterview\b.*|crowd.*|drums?|dialogue|dave speaks.*|outro|silence|untitled|unknown|segue|space|tease)$/i;
 

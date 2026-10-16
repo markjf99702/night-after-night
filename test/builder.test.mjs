@@ -5,7 +5,7 @@ import data from '../js/data.js';
 import { build, clock, story, dateText } from '../js/model.js';
 import { buildShow, encode, decode, leadIns, pool, encoreSize } from '../js/builder.js';
 import { bandOn } from '../js/lineup.js';
-import { VENUE_NAMES } from '../tools/titles.mjs';
+import { VENUE_NAMES, BIT_NAMES } from '../tools/titles.mjs';
 
 const M = build(data);
 function seeded(seed) {
@@ -175,4 +175,13 @@ test('a night shows what its venue was called that night', () => {
   assert.equal(M.byDate.get('2018-02-03').venue, xcel.venue);
   // A venue keeps the name it's listed and chosen by.
   assert.ok(M.venues.some(v => v.name === 'Xfinity Theatre' && v.town === 'Hartford, CT'));
+});
+
+test('bits of other songs go by their everyday names', () => {
+  const bits = slug => M.bySlug.get(slug).bits.map(([b]) => b);
+  assert.ok(bits('two-step').includes('Brahms’ Lullaby'), 'not "5 Lieder, op. 49: Nr. 4. Wiegenlied"');
+  assert.ok(bits('that-girl-is-you').includes('Entrance of the Gladiators'));
+  assert.ok(bits('all-along-the-watchtower').includes('The Good, the Bad and the Ugly'));
+  const heard = M.nights.flatMap(n => n.tracks.flatMap(t => [...(t.bits || []), ...(t.withs || [])]));
+  assert.deepEqual(heard.filter(b => b in BIT_NAMES), [], 'no work under its original title');
 });
