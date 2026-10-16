@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
+import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, COVERS, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(root, '.cache/musicbrainz');
@@ -461,6 +461,11 @@ for (const s of songList) {
     writers.set(s, [...new Set(credits.map(r => r.artist.name))]);
     s.cover = Math.max(s.cover, s.original + 1);
     break;
+  }
+  // A cover MusicBrainz has no song for: its writers from the list in tools/titles.mjs.
+  if (!s.works.size && COVERS[s.key]) {
+    writers.set(s, COVERS[s.key]);
+    s.cover = Math.max(s.cover, s.original + 1);
   }
 }
 

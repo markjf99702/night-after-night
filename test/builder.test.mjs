@@ -151,3 +151,16 @@ test('three songs from June 2018 are on the nights they were played, and links f
   }
   assert.ok(!M.byDate.has('2018-09-06') && !M.byDate.has('2018-12-06'), 'no nights the band didn’t play');
 });
+
+test('covers MusicBrainz has no song for say who wrote them', () => {
+  const by = [['Back in Black', 'Angus Young'], ['Brick House', 'Lionel Richie'], ['Carolina on My Mind', 'James Taylor'], ['Come Together', 'John Lennon'],
+    ['Fool In The Rain', 'Jimmy Page'], ['Honky Tonk Women', 'Keith Richards'], ['Let’s Dance', 'David Bowie'], ['Sexy M.F.', 'Prince'], ['Soulshine', 'Warren Haynes'],
+    ['Southern Accents', 'Tom Petty'], ['Stayin’ Alive', 'Robin Gibb'], ['The Way It Is', 'Bruce Hornsby'], ['The Weight', 'Robbie Robertson']];
+  for (const [name, writer] of by) {
+    const s = M.songs.find(x => x.name === name);
+    assert.ok(s?.cover?.includes(writer), `${name}: written by ${writer} (${s?.cover})`);
+  }
+  // With Covers too off, none of them is in the pool.
+  const names = new Set(pool(M, { covers: false }).flatMap(it => it.songs.map(s => s.name)));
+  assert.deepEqual(by.filter(([name]) => names.has(name)), []);
+});

@@ -47,6 +47,7 @@ test('songs on stage before their album, from the first time each was played', (
   for (const g of B.albums) assert.ok(g.rows.length <= g.fresh, `${g.album.name}: ${g.rows.length} of ${g.fresh}`);
   assert.ok(B.never.some(s => s.name === 'Anyone Seen the Bridge?'));
   assert.ok(B.never.every(s => !s.cover && !s.albums.length && s.count >= 2));
+  assert.ok(!B.never.some(s => s.name === 'Sexy M.F.'), 'Sexy M.F. is Prince’s, not the band’s own');
   // The first time anywhere, the band's show or not.
   const bartender = named('Bartender');
   assert.ok(firstHeard(bartender).date < bartender.firstPlay.date && !firstHeard(bartender).band, 'Bartender came first with Tim Reynolds');

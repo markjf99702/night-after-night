@@ -26,6 +26,25 @@ export const ALIASES = {
   anyoneseethebridge: 'Anyone Seen the Bridge?',
 };
 
+// Covers whose recordings MusicBrainz links to no song (work), so nothing there says who wrote them: the writers as
+// the original records credit them, checked against each song's own entry on MusicBrainz. Keyed like ALIASES.
+export const COVERS = {
+  backinblack: ['Angus Young', 'Malcolm Young', 'Brian Johnson'],
+  brickhouse: ['Lionel Richie', 'Ronald LaPread', 'Walter Orange', 'Milan Williams', 'Thomas McClary', 'William King'],
+  carolinaonmymind: ['James Taylor'], // Carolina in My Mind
+  carolinainmymind: ['James Taylor'],
+  cometogether: ['John Lennon', 'Paul McCartney'],
+  foolintherain: ['John Paul Jones', 'Jimmy Page', 'Robert Plant'],
+  honkytonkwomen: ['Mick Jagger', 'Keith Richards'],
+  letsdance: ['David Bowie'],
+  sexymf: ['Prince', 'Levi Seacer Jr.', 'Tony M.'],
+  soulshine: ['Warren Haynes'],
+  southernaccents: ['Tom Petty'],
+  stayinalive: ['Barry Gibb', 'Robin Gibb', 'Maurice Gibb'],
+  wayitis: ['Bruce Hornsby'],
+  weight: ['Robbie Robertson'],
+};
+
 // Tracks that aren't songs: intros, jams between songs, solos, the encore break, talking.
 export const NOT_A_SONG = /^(?:\[.*\]|.*\bintro(?:duction)?s?\b.*|.*\bjams?\b.*|.*\bsolos?\b.*|.*\bduet\b.*|.*\bencore\b.*|.*\bimprov\b.*|.*\bfake\b.*|.*\bsoundcheck\b.*|.*\bbanter\b.*|.*\btuning\b.*|.*\binterview\b.*|crowd.*|drums?|dialogue|dave speaks.*|outro|silence|untitled|unknown|segue|space|tease)$/i;
 
