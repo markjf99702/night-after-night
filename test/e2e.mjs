@@ -124,6 +124,41 @@ await page.waitForSelector('.set .item');
 assert.equal(await items(), keptCount - 1, 'Back brings back the show as it was changed');
 assert.equal(await page.textContent('.paper-foot .total'), edited);
 
+// The show on the paper comes back after a reload, changes and all, and when the app is opened again. Write another
+// writes a new one, and a show's link still opens that show.
+const setlist = p => p.$$eval('.set .item', is => is.map(i => i.textContent.replace(/\s+/g, ' ').trim()));
+const openAnother = async url => {
+  const p = await ctx.newPage();
+  p.on('pageerror', e => problems.push(e.message));
+  await p.goto(url);
+  await p.waitForSelector('.set .item');
+  return p;
+};
+await page.goto(base + '#/');
+await page.waitForSelector('.set .item');
+const following = await setlist(page);
+await page.reload();
+await page.waitForSelector('.set .item');
+assert.deepEqual(await setlist(page), following, 'a reload brings back the show on the paper');
+await page.tap('.set .item >> nth=1');
+await page.tap('#sheet[open] #drop');
+const takenOut = await setlist(page);
+await page.reload();
+await page.waitForSelector('.set .item');
+assert.deepEqual(await setlist(page), takenOut, 'with the song that was taken out still out');
+const relaunched = await openAnother(base);
+assert.deepEqual(await setlist(relaunched), takenOut, 'opening the app again brings it back too');
+await relaunched.close();
+await page.tap('#again2');
+const written = await setlist(page);
+assert.notDeepEqual(written, takenOut, 'Write another writes a new one');
+await page.reload();
+await page.waitForSelector('.set .item');
+assert.deepEqual(await setlist(page), written, 'and that one comes back');
+const linked = await openAnother(base + kept);
+assert.equal(await linked.textContent('.paper-foot .total'), keptTotal, 'a show’s link opens that show, not the one on the paper');
+await linked.close();
+
 // Where: two venues, and every song is from one of them. Tap one to take it off; Anywhere clears them.
 await page.goto(base + '#/');
 await page.waitForSelector('.set .item');
@@ -280,10 +315,14 @@ assert.equal(await sideways(), false, 'a year page scrolls sideways on a phone')
 await page.tap('.year-nav a >> text=2007');
 await page.waitForFunction(() => document.querySelector('.year-head h2')?.textContent.trim() === '2007');
 
-// Choices saved when "From when?" and "Where?" took one each come back the same.
+// Choices saved when "From when?" and "Where?" took one each come back the same. That version kept no show on the
+// paper, so the page writes one from them.
 const gorge = await page.evaluate(() => window.nightAfterNight.M.venues.find(v => v.name === 'The Gorge Amphitheatre').id);
 await page.goto(base + '#/');
-await page.evaluate(id => localStorage.setItem('night-after-night.options', JSON.stringify({ minutes: 60, when: 'leroi', venue: String(id), picks: 'mix', jams: 'any', covers: true })), gorge);
+await page.evaluate(id => {
+  localStorage.setItem('night-after-night.options', JSON.stringify({ minutes: 60, when: 'leroi', venue: String(id), picks: 'mix', jams: 'any', covers: true }));
+  localStorage.removeItem('night-after-night.current');
+}, gorge);
 await page.reload();
 await page.waitForSelector('.set .item');
 assert.deepEqual(await pressed('when'), ['leroi']);
@@ -300,6 +339,7 @@ const junk = async (key, value) => {
   await page.waitForSelector('.set .item', { timeout: 10000 });
 };
 await page.goto(base + '#/');
+for (const value of ['"str"', '[1,2]', '{"minutes":"x","code":5}', '{"minutes":90,"code":"zzz,19980230~nope"}']) await junk('current', value);
 await junk('saved', '"str"');
 await junk('saved', JSON.stringify([null, 5, { name: 'A kept show', minutes: 90, code: '19981208~seek-up', at: '2026-10-13' }]));
 assert.deepEqual(await page.$$eval('#saved li a', as => as.map(a => a.textContent)), ['A kept show'], 'only the kept show is listed');
@@ -317,13 +357,15 @@ await junk('options', '{"minutes":60,"when":["toString"],"from":"x","to":1800,"p
 assert.equal(await page.textContent('#mins'), '1:00');
 assert.deepEqual([await pressed('when'), await pressed('picks'), await pressed('jams')], [['any'], ['mix'], ['any']], 'the usual choices instead');
 assert.equal(await page.isChecked('#covers'), true);
-// When the browser won't keep anything (a private window, blocked site data), Keep it says so.
+// When the browser won't keep anything (a private window, blocked site data), Keep it says so. The show that came
+// back after those reloads is the one just kept, so it writes another first.
 await page.evaluate(() => { window.keepItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new DOMException('Not allowed', 'SecurityError'); }; });
+await page.tap('#again2');
 await page.tap('#save');
 assert.equal(await page.textContent('#toast'), 'Your browser wouldn’t let the page keep it.');
 assert.equal((await stored('saved')).length, 1, 'nothing more was kept');
 await page.evaluate(() => { Storage.prototype.setItem = window.keepItem; });
-await page.evaluate(() => ['saved', 'options'].forEach(k => localStorage.removeItem('night-after-night.' + k)));
+await page.evaluate(() => ['saved', 'options', 'current'].forEach(k => localStorage.removeItem('night-after-night.' + k)));
 
 // A share link cut off in the middle of a %-escape still opens the show, all but the song that was cut.
 const worcester = await page.evaluate(() => window.nightAfterNight.M.byDate.get('1998-12-08').tracks.filter(t => t.songs).slice(0, 3).map(t => `19981208~${t.songs[0].slug}`));

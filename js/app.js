@@ -129,8 +129,24 @@ const venueByKey = new Map(M.venues.map(v => [venueKey(v), v]));
 // "From when?" and "Where?" take any number of choices: a night in any of them counts.
 const DEFAULTS = { minutes: 90, when: ['any'], from: +first, to: +last, venues: [], picks: 'mix', jams: 'any', covers: true };
 let opts = readOptions();
-let show = null;
-let showMinutes = opts.minutes;
+// The show on the paper comes back after a reload, a tab the phone put away or opening the app again, unless the
+// page opens on a show's link. Write another still writes a new one.
+let show = location.hash.startsWith('#/show/') ? null : recall();
+let showMinutes = show ? show.minutes : opts.minutes;
+
+// The show on the paper, kept as { minutes, code } the way a share link names it, after every new show and change.
+function remember() {
+  store.set('current', { minutes: showMinutes, code: show ? encode(show) : '' });
+}
+function recall() {
+  const saved = store.get('current', null);
+  if (!saved || typeof saved !== 'object' || typeof saved.code !== 'string') return null;
+  const back = decode(M, saved.code);
+  if (!back.slots.length) return null;
+  const asked = saved.minutes;
+  back.minutes = Number.isInteger(asked) && asked >= 15 && asked <= 240 ? asked : Math.round(back.total / 60);
+  return back;
+}
 
 // The saved choices, including ones saved when each of those took a single choice. Anything that isn't one of the
 // choices on the page goes back to the usual one.
@@ -180,6 +196,7 @@ function writeShow(animate = true) {
   showMinutes = opts.minutes;
   show = buildShow(M, builderOptions());
   renderPaper(animate);
+  remember();
   history.replaceState(null, '', '#/');
 }
 
@@ -267,7 +284,7 @@ function renderBuilder(shared) {
   });
   reflectOptions();
   renderSaved();
-  if (shared) { show = shared; showMinutes = shared.minutes; renderPaper(true); }
+  if (shared) { show = shared; showMinutes = shared.minutes; renderPaper(true); remember(); }
   else if (show) renderPaper(false);
   else writeShow();
 }
@@ -446,6 +463,7 @@ function openSlot(i) {
 
 function afterEdit(i) {
   show.total = show.slots.reduce((a, s) => a + s.item.secs, 0);
+  remember();
   closeSheet();
   renderPaper(false);
   // The setlist is drawn afresh, so put the keyboard back on the song that changed (or the one after a song taken
