@@ -41,6 +41,9 @@ export function beforeAlbum(M) {
     album,
     rows: rows.filter(r => r.album === album).sort((a, b) => a.first.date.localeCompare(b.first.date)),
     played: M.songs.filter(s => s.albums[0]?.album === album).length,
+    // Its songs that weren't on an earlier album, the ones it can be listed with: Ants Marching and Satellite are
+    // under Remember Two Things, not Under the Table and Dreaming.
+    fresh: album.songCount - M.songs.filter(s => s.albums.some(a => a.album === album) && s.albums[0].album !== album).length,
   })).filter(g => g.rows.length);
   const never = M.songs.filter(s => !s.cover && !s.albums.length && s.count >= 2)
     .sort((a, b) => firstHeard(a).date.localeCompare(firstHeard(b).date));

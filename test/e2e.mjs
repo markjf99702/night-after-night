@@ -274,6 +274,14 @@ await page.waitForSelector('.album-run .waits a');
 assert.match(await page.textContent('.before-page .headline'), /were on stage first/);
 const albumHeads = await page.$$eval('.album-run h3 small', ss => ss.map(s => s.textContent));
 assert.ok(albumHeads.every(t => !/\b1 of its \d+ songs were\b/.test(t)), `one song was, not were: ${albumHeads.filter(t => /\b1 of/.test(t))}`);
+// Under the Table and Dreaming counts the songs listed under it, not Ants Marching and Satellite, which are listed
+// under Remember Two Things.
+const [uttadHead, uttadRows] = await page.$$eval('.album-run', rs => {
+  const r = rs.find(x => /Under the Table and Dreaming/.test(x.querySelector('h3').textContent));
+  return [r.querySelector('h3 small').textContent, r.querySelectorAll('.waits li').length];
+});
+const [, allNew, someNew] = uttadHead.match(/(?:all (\d+) of its new songs|(\d+) of its \d+ new songs) (?:was|were) on stage first/) || [];
+assert.equal(+(allNew || someNew), uttadRows, `the heading counts the songs under it: ${uttadHead}`);
 assert.equal(await sideways(), false, 'Before the album scrolls sideways on a phone');
 await page.tap('.album-run .waits a >> text=Grey Street');
 await page.waitForSelector('.song-head h2');

@@ -39,6 +39,12 @@ test('songs on stage before their album, from the first time each was played', (
     const dates = g.rows.map(r => r.first.date);
     assert.deepEqual(dates, [...dates].sort(), g.album.name);
   }
+  // Each album's count is of the songs it can be listed with: the ones that weren't on an earlier album.
+  const group = name => B.albums.find(g => g.album.name === name);
+  assert.equal(group('Under the Table and Dreaming').fresh, group('Under the Table and Dreaming').album.songCount - 2, 'Ants Marching and Satellite were on Remember Two Things');
+  assert.equal(group('Crash').fresh, group('Crash').album.songCount - 1, 'Tripping Billies was on Remember Two Things');
+  assert.equal(busted.fresh, busted.album.songCount, 'every song on Busted Stuff was new');
+  for (const g of B.albums) assert.ok(g.rows.length <= g.fresh, `${g.album.name}: ${g.rows.length} of ${g.fresh}`);
   assert.ok(B.never.some(s => s.name === 'Anyone Seen the Bridge?'));
   assert.ok(B.never.every(s => !s.cover && !s.albums.length && s.count >= 2));
   // The first time anywhere, the band's show or not.

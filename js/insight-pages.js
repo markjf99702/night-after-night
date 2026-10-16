@@ -48,7 +48,9 @@ export function renderBefore(view, M) {
     <div class="pipeline">
       <div class="axis" aria-hidden="true">${ticks.map(y => `<span style="left:${(((y - lo) / (hi - lo)) * 100).toFixed(2)}%">${y}</span>`).join('')}</div>
       ${B.albums.map(g => {
-        const of = g.album.by ? '' : g.album.songCount ? ` · ${g.rows.length === g.album.songCount ? `all ${g.album.songCount} of its songs` : `${g.rows.length} of its ${g.album.songCount} songs`} ${g.rows.length === 1 ? 'was' : 'were'} on stage first` : '';
+        // Counted against the songs it's listed with: "9 of its 10 new songs" where some were on an earlier album.
+        const n = g.fresh, songs = n < g.album.songCount ? 'new songs' : 'songs';
+        const of = g.album.by ? '' : n ? ` · ${g.rows.length === n ? `all ${n} of its ${songs}` : `${g.rows.length} of its ${n} ${songs}`} ${g.rows.length === 1 ? 'was' : 'were'} on stage first` : '';
         return `<section class="album-run">
           <h3>${esc(g.album.name)}<small>${longDate(g.album.date)}${g.album.by ? `, ${esc(g.album.by)}` : ''}${of}</small></h3>
           <ol class="waits">${g.rows.map(r => `<li><a href="#/song/${r.song.slug}">
