@@ -219,8 +219,11 @@ export function encode(show) {
 // Nights the data once had under another date, before a fix in tools/titles.mjs moved them. Links and kept shows from
 // then name those pieces by the old date, so a piece is looked for on its own night first, then on the one it moved
 // to. Red Rocks' September 9, 2005 was filed under September 10; a song played both nights (American Baby, Louisiana
-// Bayou) is the 10th's, as a link made now means it.
-export const MOVED = { '2005-09-10': '2005-09-09' };
+// Bayou) is the 10th's, as a link made now means it. Three songs from June 2018 had the day and month swapped.
+export const MOVED = {
+  '2005-09-10': '2005-09-09',
+  '2018-07-06': '2018-06-07', '2018-09-06': '2018-06-09', '2018-12-06': '2018-06-12',
+};
 
 export function decode(M, text) {
   const slots = [];

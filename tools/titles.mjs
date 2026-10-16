@@ -127,9 +127,14 @@ export const VENUE_TOWNS = {
   milehighmusicfestival: 'Commerce City, CO',
 };
 
-// Dates MusicBrainz has wrong, by date and venue: the 1994 McIntire Amphitheatre show is also filed under 2004.
+// Dates MusicBrainz has wrong, by date and venue: the 1994 McIntire Amphitheatre show is also filed under 2004, and
+// three songs on Live Trax 46's bonus disc (Encore Trax: Summer Tour 2018 Extended) have the day and month swapped:
+// the tour played Cincinnati on June 7, Bristow on June 9 and Gilford on June 12.
 export const DATE_FIXES = {
   '2004-09-27|mcintireamphitheatre': '1994-09-27',
+  '2018-07-06|riverbendmusiccentre': '2018-06-07',
+  '2018-09-06|jiffylubelive': '2018-06-09',
+  '2018-12-06|banknhpavilion': '2018-06-12',
 };
 
 // Discs MusicBrainz files under the wrong night, by release and disc, for a night that shares its date and venue with

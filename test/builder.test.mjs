@@ -141,3 +141,13 @@ test('Red Rocks, September 9 and 10, 2005: two whole nights, and links from befo
     assert.equal(decode(M, encode({ slots: [{ item: { parts: [t] } }] })).slots[0].item.parts[0], t, `${n.date}: American Baby`);
   }
 });
+
+test('three songs from June 2018 are on the nights they were played, and links from before still open', () => {
+  const on = (date, name) => !!M.byDate.get(date)?.tracks.some(t => t.songs?.some(s => s.name === name));
+  for (const [was, date, name] of [['2018-07-06', '2018-06-07', 'Idea of You'], ['2018-09-06', '2018-06-09', 'Do You Remember'], ['2018-12-06', '2018-06-12', 'Louisiana Bayou']]) {
+    assert.ok(on(date, name) && !on(was, name), `${name} on ${date}, not ${was}`);
+    const slug = M.songs.find(s => s.name === name).slug;
+    assert.equal(decode(M, `${was.replaceAll('-', '')}~${slug}`).slots[0]?.item.night.date, date, `a link to ${name} from ${was}`);
+  }
+  assert.ok(!M.byDate.has('2018-09-06') && !M.byDate.has('2018-12-06'), 'no nights the band didn’t play');
+});

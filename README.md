@@ -49,7 +49,7 @@ Every recording comes from [MusicBrainz](https://musicbrainz.org/artist/07e748f1
 - **Songs** are matched however a release spells them ("Corn Bread" and "Cornbread", "Rhyme and Reason" and "Rhyme & Reason"), with typos caught by spelling. Intros, jams between songs, solos and the encore break aren't counted as songs, and a track called "Pantala Naga Pampa > Rapunzel" counts for both.
 - **The album version** is the studio album the song is on. For songs on Remember Two Things and a later album, it's the later one, since Remember Two Things was partly recorded live. The songs from Dave's Some Devil are measured against that album.
 - **The lineup** is from MusicBrainz's member list and Wikipedia: LeRoi Moore's last show was June 28, 2008, and Jeff Coffin played sax from that summer; Boyd Tinsley left in February 2018. Touring players who were on stage every night (Butch Taylor, Rashawn Ross) are included.
-- Mistakes in MusicBrainz show up here. A few known ones are fixed in `tools/titles.mjs` (a 1994 show filed under 2004, Red Rocks' September 9, 2005 filed under the 10th, venues under old or misspelled names); better still, fix them on MusicBrainz and rebuild.
+- Mistakes in MusicBrainz show up here. A few known ones are fixed in `tools/titles.mjs` (a 1994 show filed under 2004, Red Rocks' September 9, 2005 filed under the 10th, three songs from June 2018 with the day and month swapped, venues under old or misspelled names); better still, fix them on MusicBrainz and rebuild.
 
 ## Running it
 
