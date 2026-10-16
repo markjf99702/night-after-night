@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, DATE_FIXES, distance } from './titles.mjs';
+import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(root, '.cache/musicbrainz');
@@ -256,6 +256,12 @@ function relInfo(rec) {
 
 const recInfo = new Map(); // recording id → { date, place?, text?, fromTitle? }
 const how = { title: 0, rel: 0, disc: 0, release: 0 };
+// The recordings on the discs DISC_DATES moves, so they're moved on any release they turn up on.
+const discDates = new Map();
+for (const r of releases) {
+  const fix = DISC_DATES[r.id];
+  if (fix) for (const [mi, m] of audioMedia(r).entries()) for (const t of m.tracks || []) if (fix[m.position || mi + 1]) discDates.set(t.recording.id, fix[m.position || mi + 1]);
+}
 for (const r of releases) {
   for (const m of audioMedia(r)) for (const t of m.tracks || []) {
     if (recInfo.has(t.recording.id)) continue;
@@ -264,7 +270,8 @@ for (const r of releases) {
     const fixed = rel && DATE_FIXES[`${rel.date}|${venueKey(rel.place?.name || placeFromText(rel.text)?.name || '')}`];
     if (fixed) { rel.date = fixed; if (rel.text) rel.text = rel.text.replace(/Charleston, SC/, 'Charlottesville, VA'); }
     const inTitle = dateIn(t.title);
-    if (inTitle) { recInfo.set(t.recording.id, { ...rel, date: inTitle.date }); how.title++; }
+    if (discDates.has(t.recording.id)) { recInfo.set(t.recording.id, { ...rel, date: discDates.get(t.recording.id) }); how.rel++; }
+    else if (inTitle) { recInfo.set(t.recording.id, { ...rel, date: inTitle.date }); how.title++; }
     else if (rel?.date) { recInfo.set(t.recording.id, rel); how.rel++; }
   }
 }

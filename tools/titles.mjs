@@ -132,6 +132,13 @@ export const DATE_FIXES = {
   '2004-09-27|mcintireamphitheatre': '1994-09-27',
 };
 
+// Discs MusicBrainz files under the wrong night, by release and disc, for a night that shares its date and venue with
+// the right one: The Complete Weekend on the Rocks has Red Rocks' September 9, 2005 (discs 1 and 2) under September
+// 10, the night on discs 3 and 4. The DMB Almanac's setlists say which is which.
+export const DISC_DATES = {
+  '5ea71eab-a51d-4584-b84c-e7f23c0cdd1f': { 1: '2005-09-09', 2: '2005-09-09' },
+};
+
 // Venue names that are simply wrong where they're written down.
 export const VENUE_FIXES = {
   soulshine: 'Madison Square Garden', // "live, 2024-11-24: Soulshine, Madison Square Garden, …"

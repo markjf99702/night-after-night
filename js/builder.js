@@ -216,17 +216,28 @@ export function encode(show) {
   }).join(',');
 }
 
+// Nights the data once had under another date, before a fix in tools/titles.mjs moved them. Links and kept shows from
+// then name those pieces by the old date, so a piece is looked for on its own night first, then on the one it moved
+// to. Red Rocks' September 9, 2005 was filed under September 10; a song played both nights (American Baby, Louisiana
+// Bayou) is the 10th's, as a link made now means it.
+export const MOVED = { '2005-09-10': '2005-09-09' };
+
 export function decode(M, text) {
   const slots = [];
+  const find = (date, song) => {
+    const night = M.byDate.get(date);
+    const tracks = night ? night.tracks.filter(t => t.songs) : [];
+    const k = tracks.findIndex(t => t.songs[0] === song);
+    return k < 0 ? null : { night, tracks, k };
+  };
   for (const token of String(text || '').split(',')) {
     const m = token.match(/^(\d{4})(\d{2})(\d{2})~([a-z0-9-]+)(\+?)$/);
     if (!m) continue;
-    const night = M.byDate.get(`${m[1]}-${m[2]}-${m[3]}`);
+    const date = `${m[1]}-${m[2]}-${m[3]}`;
     const song = M.bySlug.get(m[4]);
-    if (!night || !song) continue;
-    const tracks = night.tracks.filter(t => t.songs);
-    const k = tracks.findIndex(t => t.songs[0] === song);
-    if (k < 0) continue;
+    const at = song && (find(date, song) || (MOVED[date] && find(MOVED[date], song)));
+    if (!at) continue;
+    const { night, tracks, k } = at;
     const parts = m[5] && tracks[k + 1] ? [tracks[k], tracks[k + 1]] : [tracks[k]];
     slots.push({ anchor: song, item: { parts, songs: parts.flatMap(p => p.songs), secs: parts.reduce((a, p) => a + p.secs, 0), night } });
   }

@@ -121,3 +121,23 @@ test('a share link brings back the same show', () => {
   assert.deepEqual(back.slots.map(s => s.item.songs.map(x => x.name)), show.slots.map(s => s.item.songs.map(x => x.name)));
   assert.deepEqual(decode(M, 'nonsense,19981208~not-a-song').slots, []);
 });
+
+test('Red Rocks, September 9 and 10, 2005: two whole nights, and links from before still open', () => {
+  const songs = n => n.tracks.filter(t => t.songs && !t.extra).flatMap(t => t.songs.map(s => s.name));
+  const ninth = M.byDate.get('2005-09-09'), tenth = M.byDate.get('2005-09-10');
+  assert.deepEqual([songs(ninth).length, songs(ninth)[0], songs(ninth).at(-1)], [17, 'Everyday', 'Ants Marching']);
+  assert.deepEqual([songs(tenth).length, songs(tenth)[0], songs(tenth).at(-1)], [18, 'Seek Up', 'Two Step']);
+  for (const n of [ninth, tenth]) {
+    assert.ok(n.whole, `${n.date} is a whole night`);
+    assert.equal(new Set(songs(n)).size, songs(n).length, `${n.date}: no song twice`);
+  }
+  assert.ok(M.bySlug.get('blackbird').versions.some(v => v.night.whole), 'Blackbird has a whole night');
+  // A link from when both were filed under the 10th: its Everyday is the 9th's, its Seek Up the 10th's.
+  const old = decode(M, '20050910~everyday,20050910~seek-up,20050910~ants-marching');
+  assert.deepEqual(old.slots.map(s => s.item.night.date), ['2005-09-09', '2005-09-10', '2005-09-09']);
+  // A link made now to a song played both nights opens the night it was made from.
+  for (const n of [ninth, tenth]) {
+    const t = n.tracks.find(x => x.songs?.[0].name === 'American Baby');
+    assert.equal(decode(M, encode({ slots: [{ item: { parts: [t] } }] })).slots[0].item.parts[0], t, `${n.date}: American Baby`);
+  }
+});
