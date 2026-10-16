@@ -142,6 +142,40 @@ assert.ok((await at()).every(t => /Saratoga/.test(t)), 'then only Saratoga');
 await page.tap('#where [data-v=""]');
 assert.deepEqual(await pressed('venues'), [''], 'Anywhere again');
 
+// Take every song out and the paper says so in its own words, not that nothing fits; Copy, Share and Keep are put
+// away while the paper's empty, and when the choices find nothing too.
+const putAway = () => page.$$eval('#copy, #share, #save', bs => bs.map(b => b.hidden));
+await page.tap('[data-opt="minutes"] [data-v="30"]');
+await page.waitForSelector('.set .item');
+assert.deepEqual(await putAway(), [false, false, false], 'Copy, Share and Keep with a show on the paper');
+while (await page.$('.set .item')) {
+  await page.tap('.set .item >> nth=0');
+  await page.tap('#sheet[open] #drop');
+}
+assert.match(await page.textContent('#paper'), /Every song’s out\. Write another\./);
+assert.doesNotMatch(await page.textContent('#paper'), /fit all of that/, 'no choice changed');
+assert.deepEqual(await putAway(), [true, true, true], 'nothing to copy, share or keep');
+await page.tap('#again2');
+await page.waitForSelector('.set .item');
+assert.deepEqual(await putAway(), [false, false, false], 'back with the next show');
+const nowhere = await page.evaluate(() => {
+  const { M } = window.nightAfterNight;
+  const decades = { '90s': [1991, 1999], '00s': [2000, 2009], '10s': [2010, 2019], '20s': [2020, 2029] };
+  for (const o of document.querySelectorAll('#venue option')) {
+    const v = o.value && M.venues.find(x => `${x.name}|${x.town}` === o.value);
+    for (const [k, [a, b]] of Object.entries(decades)) if (v && !v.nights.some(n => n.year >= a && n.year <= b)) return { venue: o.value, when: k };
+  }
+  return null;
+});
+assert.ok(nowhere, 'a venue with nothing from one of the decades');
+await page.selectOption('#venue', nowhere.venue);
+await page.tap(`[data-opt="when"] [data-v="${nowhere.when}"]`);
+assert.match(await page.textContent('#paper'), /No official recordings fit all of that/);
+assert.deepEqual(await putAway(), [true, true, true], 'put away when the choices find nothing');
+await page.tap('#where [data-v=""]');
+await page.tap('[data-opt="when"] [data-v="any"]');
+await page.waitForSelector('.set .item');
+
 // Songs: find one and open it.
 await page.tap('.tabs [data-tab="songs"]');
 const found = typed => page.fill('#q', typed).then(() => page.$$eval('#songs .name', ns => ns.map(n => n.textContent)));

@@ -308,12 +308,17 @@ function reflectOptions() {
 function renderPaper(animate) {
   const paper = document.getElementById('paper');
   if (!paper) return;
+  const empty = !show?.slots.length;
   paper.classList.toggle('writing', !!animate);
-  paper.classList.toggle('empty', !show?.slots.length);
-  if (!show?.slots.length) {
+  paper.classList.toggle('empty', empty);
+  // Copy, Share and Keep have nothing to work with on an empty paper, so they're put away until there's a show.
+  for (const id of ['copy', 'share', 'save']) { const b = document.getElementById(id); if (b) b.hidden = empty; }
+  if (empty) {
+    // Every song taken out by hand, or nothing that fits the choices.
+    const why = show && !show.empty ? 'Every song’s out. Write another.' : 'No official recordings fit all of that. Try another venue or more years.';
     paper.innerHTML = `<span class="tape l"></span><span class="tape r"></span>
       <p class="hand" style="font-size:22px;margin:0 0 8px">Nothing to play</p>
-      <p class="muted small" style="color:var(--paper-meta)">No official recordings fit all of that. Try another venue or more years.</p>`;
+      <p class="muted small" style="color:var(--paper-meta)">${why}</p>`;
     return;
   }
   const enc = encoreSize(show.slots);
