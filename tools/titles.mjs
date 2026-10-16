@@ -204,4 +204,25 @@ export const VENUE_ALIASES = {
   mcicentre: 'Capital One Arena',
   pacificbellpark: 'SBC Park',
   molsoncanadianamphitheatre: 'Molson Amphitheatre',
+  xcelenergycentre: 'Grand Casino Arena',
+};
+
+// What a venue was called on a night MusicBrainz files under a name it only got later, by date and the later name.
+// The aliases above only match names; these are what a night shows. From the releases' titles and MusicBrainz's own
+// notes on the recordings, and the names those arenas had in December 2002.
+export const VENUE_NAMES = {
+  '2000-08-27|xfinitytheatre': 'Meadows Music Theatre',
+  '2002-12-10|benchmarkinternationalarena': 'St. Pete Times Forum',
+  '2002-12-11|statefarmarena': 'Philips Arena',
+  '2002-12-14|statefarmcentre': 'Assembly Hall',
+  '2002-12-17|mvparena': 'Pepsi Arena',
+  '2002-12-22|capitalonearena': 'MCI Center',
+  '2003-07-22|utahfirstcreditunionamphitheatre': 'USANA Amphitheatre',
+  '2012-05-26|xfinitytheatre': 'Comcast Theatre',
+  '2018-02-03|grandcasinoarena': 'Xcel Energy Center',
+  '2018-06-06|pineknobmusictheatre': 'DTE Energy Music Theatre',
+  '2018-06-12|banknhpavilion': 'Bank of New Hampshire Pavilion',
+  '2018-07-07|ruoffmusiccentre': 'Ruoff Home Mortgage Music Center',
+  '2018-08-28|haydenhomesamphitheatre': 'Les Schwab Amphitheater',
+  '2019-05-14|caseyscentre': 'Wells Fargo Arena',
 };

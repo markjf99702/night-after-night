@@ -5,6 +5,7 @@ import data from '../js/data.js';
 import { build, clock, story, dateText } from '../js/model.js';
 import { buildShow, encode, decode, leadIns, pool, encoreSize } from '../js/builder.js';
 import { bandOn } from '../js/lineup.js';
+import { VENUE_NAMES } from '../tools/titles.mjs';
 
 const M = build(data);
 function seeded(seed) {
@@ -163,4 +164,15 @@ test('covers MusicBrainz has no song for say who wrote them', () => {
   // With Covers too off, none of them is in the pool.
   const names = new Set(pool(M, { covers: false }).flatMap(it => it.songs.map(s => s.name)));
   assert.deepEqual(by.filter(([name]) => names.has(name)), []);
+});
+
+test('a night shows what its venue was called that night', () => {
+  for (const [key, name] of Object.entries(VENUE_NAMES)) assert.equal(M.byDate.get(key.split('|')[0])?.place, name, key);
+  assert.equal(M.byDate.get('2002-12-22').place, 'MCI Center', 'not Capital One Arena');
+  // Xcel Energy Center in 2010 and in 2018 is one venue, so each night lists the other.
+  const xcel = M.byDate.get('2010-09-15');
+  assert.equal(xcel.place, 'Xcel Energy Center');
+  assert.equal(M.byDate.get('2018-02-03').venue, xcel.venue);
+  // A venue keeps the name it's listed and chosen by.
+  assert.ok(M.venues.some(v => v.name === 'Xfinity Theatre' && v.town === 'Hartford, CT'));
 });

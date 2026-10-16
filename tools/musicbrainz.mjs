@@ -11,7 +11,7 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, COVERS, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
+import { songKey, venueKey, dateIn, splitTitle, NOT_A_SONG, JAMS, ALIASES, COVERS, TOWNS, VENUE_ALIASES, VENUE_FIXES, VENUE_TOWNS, VENUE_NAMES, DATE_FIXES, DISC_DATES, distance } from './titles.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(root, '.cache/musicbrainz');
@@ -436,7 +436,9 @@ for (const [date, rows] of [...nightRows].sort(([a], [b]) => a.localeCompare(b))
   const total = tracks.filter(t => !t.extra).reduce((a, t) => a + t.secs, 0);
   const sung = mainTracks.flatMap(t => t.songs);
   const repeats = sung.length - new Set(sung).size;
-  nights.push({ date, venue: at?.venue, venueName: at?.name, tracks, release: releaseRef(main[0].release), whole: oneNight && mainTracks.length >= 10 && total <= 12600 && repeats < 2 });
+  // The name it had that night, where MusicBrainz only has a later one. The venue keeps its name in the list.
+  const venueName = (at && VENUE_NAMES[`${date}|${venueKey(at.name)}`]) || at?.name;
+  nights.push({ date, venue: at?.venue, venueName, tracks, release: releaseRef(main[0].release), whole: oneNight && mainTracks.length >= 10 && total <= 12600 && repeats < 2 });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
